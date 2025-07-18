@@ -27,7 +27,7 @@
 
 1. **プロジェクトのクローン**
    ```bash
-   git clone https://github.com/yourusername/study-pace-calculator.git
+   git clone https://github.com/dastermaf/LPT.git
    cd study-pace-calculator
    ```
 
