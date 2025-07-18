@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学習ペース計算アプリ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>学習ペース計算アプリ</h1>
+
+    <form id="studyForm" class="study-form">
+      <div class="form-group">
+        <label for="subjects">履修科目数:</label>
+        <input type="number" id="subjects" min="1" max="22" value="4" required>
+      </div>
+
+      <div id="subject-details" class="subject-details"></div>
+
+      <div class="form-group">
+        <label for="startDate">学期開始日:</label>
+        <input type="date" id="startDate" value="2025-04-05" required>
+      </div>
+
+      <div class="form-group">
+        <label for="endDate">学期終了日:</label>
+        <input type="date" id="endDate" value="2025-08-07" required>
+      </div>
+
+      <button type="submit">学習ペースを計算する</button>
+    </form>
+
+    <div class="results hidden" id="results">
+      <h3>学習ペース計算結果</h3>
+      <div id="summary"></div>
+      <div class="progress">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div id="detailed-info"></div>
+      <div class="recommendation" id="recommendation"></div>
+      <div class="daily-schedule" id="daily-schedule"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

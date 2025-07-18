@@ -1,0 +1,436 @@
+/*! HTML5 Boilerplate v9.0.1 | MIT License | https://html5boilerplate.com/ */
+
+/* main.css 3.0.0 | MIT License | https://github.com/h5bp/main.css#readme */
+/*
+ * What follows is the result of much research on cross-browser styling.
+ * Credit left inline and big thanks to Nicolas Gallagher, Jonathan Neal,
+ * Kroc Camen, and the H5BP dev community and team.
+ */
+
+/* ==========================================================================
+   カスタムプロパティ（CSS変数）
+   ========================================================================== */
+:root {
+  --primary-color: #3498db;
+  --primary-dark: #2980b9;
+  --secondary-color: #2c3e50;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
+  --light-gray: #f5f5f5;
+  --border-color: #ddd;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --border-radius: 6px;
+  --transition: all 0.3s ease;
+}
+
+/* ==========================================================================
+   ベーススタイル
+   ========================================================================== */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color: #222;
+  font-size: 1em;
+  line-height: 1.4;
+}
+
+body {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: var(--light-gray);
+  color: #333;
+}
+
+/* ==========================================================================
+   コンテナとレイアウト
+   ========================================================================== */
+.container {
+  background-color: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: var(--shadow);
+  border: 1px solid #e0e0e0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.subject-details {
+  margin-bottom: 20px;
+}
+
+.subject-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  border-left: 3px solid var(--primary-color);
+  border: 1px solid #e9ecef;
+}
+
+.subject-name,
+.subject-progress {
+  flex: 1;
+  min-width: 150px;
+}
+
+.subject-name {
+  flex: 2;
+  min-width: 200px;
+}
+
+/* ==========================================================================
+   フォーム要素
+   ========================================================================== */
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: var(--secondary-color);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 16px;
+  transition: var(--transition);
+  background-color: white;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+button {
+  background-color: var(--primary-color);
+  color: white;
+  border: 2px solid var(--primary-color);
+  padding: 12px 20px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  transition: var(--transition);
+}
+
+button:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+button:disabled {
+  background-color: #bdc3c7;
+  border-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   タイポグラフィ
+   ========================================================================== */
+h1 {
+  color: var(--secondary-color);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+h3,
+h4 {
+  color: var(--secondary-color);
+  margin-top: 0;
+}
+
+/* ==========================================================================
+   結果表示
+   ========================================================================== */
+.results {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary-color);
+  border: 1px solid #e0e0e0;
+}
+
+.progress {
+  height: 20px;
+  background-color: #ecf0f1;
+  border-radius: 10px;
+  margin: 15px 0;
+  overflow: hidden;
+  border: 1px solid #d0d0d0;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--primary-color);
+  text-align: center;
+  line-height: 20px;
+  color: white;
+  transition: width 0.5s ease;
+  min-width: 30px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.subject-progress-bar {
+  margin-top: 10px;
+  height: 10px;
+  background-color: #ecf0f1;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid #d0d0d0;
+}
+
+.subject-progress-fill {
+  height: 100%;
+  background-color: var(--success-color);
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   ユーティリティクラス
+   ========================================================================== */
+.hidden {
+  display: none !important;
+}
+
+.warning {
+  color: var(--danger-color);
+  font-weight: bold;
+}
+
+.recommendation {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #e8f4fc;
+  border-radius: var(--border-radius);
+  border: 1px solid #bee5eb;
+}
+
+.daily-schedule {
+  margin-top: 20px;
+}
+
+.schedule-item {
+  padding: 8px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #eee;
+  border-radius: 3px;
+  border: 1px solid #f0f0f0;
+}
+
+.schedule-item:nth-child(odd) {
+  background-color: #f5f9fc;
+}
+
+/* ==========================================================================
+   HTML5 Boilerplate 基本スタイル
+   ========================================================================== */
+::-moz-selection {
+  background: #b3d4fc;
+  text-shadow: none;
+}
+
+::selection {
+  background: #b3d4fc;
+  text-shadow: none;
+}
+
+hr {
+  display: block;
+  height: 1px;
+  border: 0;
+  border-top: 1px solid #ccc;
+  margin: 1em 0;
+  padding: 0;
+}
+
+audio,
+canvas,
+iframe,
+img,
+svg,
+video {
+  vertical-align: middle;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* ==========================================================================
+   ヘルパークラス
+   ========================================================================== */
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.visually-hidden.focusable:active,
+.visually-hidden.focusable:focus {
+  clip: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  position: static;
+  white-space: inherit;
+  width: auto;
+}
+
+.invisible {
+  visibility: hidden;
+}
+
+.clearfix::before,
+.clearfix::after {
+  content: "";
+  display: table;
+}
+
+.clearfix::after {
+  clear: both;
+}
+
+/* ==========================================================================
+   レスポンシブデザイン
+   ========================================================================== */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  .subject-item {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .subject-name,
+  .subject-progress {
+    min-width: auto;
+  }
+}
+
+@media only screen and (min-width: 35em) {
+  /* Style adjustments for viewports that meet the condition */
+}
+
+@media print,
+  (-webkit-min-device-pixel-ratio: 1.25),
+  (min-resolution: 1.25dppx),
+  (min-resolution: 120dpi) {
+  /* Style adjustments for high resolution devices */
+}
+
+/* ==========================================================================
+   プリント用スタイル
+   ========================================================================== */
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    background-color: white;
+    color: black;
+    font-size: 12pt;
+  }
+
+  .container {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  button {
+    display: none;
+  }
+
+  .results {
+    page-break-inside: avoid;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
+  }
+
+  abbr[title]::after {
+    content: " (" attr(title) ")";
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after {
+    content: "";
+  }
+
+  pre {
+    white-space: pre-wrap !important;
+  }
+
+  pre,
+  blockquote {
+    border: 1px solid #999;
+    page-break-inside: avoid;
+  }
+
+  tr,
+  img {
+    page-break-inside: avoid;
+  }
+
+  p,
+  h2,
+  h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}
