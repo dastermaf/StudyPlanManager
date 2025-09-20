@@ -16,7 +16,6 @@ const port = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key';
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 
 // --- НАСТРОЙКА БЕЗОПАСНОСТИ ---
 const registerLimiter = rateLimit({
@@ -84,16 +83,10 @@ app.post('/api/register', registerLimiter, async (req, res) => {
             await client.query('INSERT INTO device_registrations (device_id, user_id) VALUES ($1, $2)', [deviceId, newUser.id]);
 
             const emptyProgress = { settings: { theme: 'light' }, lectures: {} };
-            const iv = crypto.randomBytes(16);
-            const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
-            let encrypted = cipher.update(JSON.stringify(emptyProgress), 'utf8', 'hex');
-            encrypted += cipher.final('hex');
-            const authTag = cipher.getAuthTag();
-            const encryptedDataForDb = `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
 
             await client.query(
                 "INSERT INTO progress (user_id, data) VALUES ($1, $2)",
-                [newUser.id, encryptedDataForDb]
+                [newUser.id, JSON.stringify(emptyProgress)]
             );
 
             await client.query('COMMIT');
@@ -134,9 +127,11 @@ app.get('/api/progress', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [req.user.id]);
         if (result.rows.length > 0) {
-            res.json({ encrypted: result.rows[0].data });
+            // Перед отправкой на клиент, преобразуем из JSONB/TEXT в объект
+            res.json(result.rows[0].data);
         } else {
-            res.json({});
+            // Если прогресса нет, отправляем пустой объект, чтобы на клиенте не было ошибок
+            res.json({ settings: { theme: 'light' }, lectures: {} });
         }
     } catch (error) {
         console.error('進捗データの読み込みエラー:', error);
@@ -146,13 +141,16 @@ app.get('/api/progress', authenticateToken, async (req, res) => {
 
 app.post('/api/progress', authenticateToken, async (req, res) => {
     try {
-        const { encrypted } = req.body;
-        if (!encrypted) return res.status(400).json({error: "保存するデータがありません。"});
+        const progressData = req.body; // Получаем объект напрямую
+        if (!progressData) return res.status(400).json({error: "保存するデータがありません。"});
+
+        // Преобразуем объект в JSON строку для сохранения в базу
+        const progressDataString = JSON.stringify(progressData);
 
         await pool.query(
             `INSERT INTO progress (user_id, data) VALUES ($1, $2)
              ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = CURRENT_TIMESTAMP`,
-            [req.user.id, encrypted]
+            [req.user.id, progressDataString]
         );
         res.status(200).json({ success: true, message: '進捗が保存されました。' });
     } catch (error) {
@@ -186,23 +184,25 @@ const initializeDatabase = async () => {
         `);
         console.log('テーブル "device_registrations" の準備ができました。');
 
+        // Проверяем тип данных колонки 'data'
         const res = await client.query(`
             SELECT data_type FROM information_schema.columns 
             WHERE table_name='progress' AND column_name='data';
         `);
 
-        if (res.rowCount === 0 || res.rows[0].data_type.toLowerCase().includes('json')) {
+        // Если таблицы нет, или тип данных TEXT (старая версия с шифрованием), то пересоздаем
+        if (res.rowCount === 0 || res.rows[0].data_type.toLowerCase().includes('text')) {
             console.log('古い、または存在しない "progress" テーブルの構造を検出しました。再作成します...');
             await client.query('DROP TABLE IF EXISTS progress;');
             await client.query(`
-                CREATE TABLE progress (
+                 CREATE TABLE progress (
                     user_id INTEGER PRIMARY KEY,
-                    data TEXT,
+                    data JSONB, -- Используем JSONB для эффективности
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );
             `);
-            console.log('テーブル "progress" が暗号化データ用のテキストフィールドで正常に作成されました。');
+            console.log('テーブル "progress" が新しいJSONB構造で正常に作成されました。');
         } else {
             console.log('テーブル "progress" の準備ができました。');
         }
