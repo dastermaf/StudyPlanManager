@@ -14,14 +14,12 @@ async function request(endpoint, options = {}) {
 
     if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-            // Если токен недействителен, выходим из системы
             window.dispatchEvent(new CustomEvent('logout'));
         }
         const errorData = await response.json().catch(() => ({ error: '不明なエラー' }));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
-    // Для запросов без тела ответа (например, 204 No Content)
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json();

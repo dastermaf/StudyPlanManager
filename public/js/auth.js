@@ -20,6 +20,23 @@ export function init(onLogin, onLogout) {
     const loginForm = document.getElementById('login-form');
     const logoutButton = document.getElementById('logout-button');
 
+    const showRegisterLink = document.getElementById('show-register');
+    const showLoginLink = document.getElementById('show-login');
+    const loginContainer = document.getElementById('login-form-container');
+    const registerContainer = document.getElementById('register-form-container');
+
+    showRegisterLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginContainer.classList.add('hidden');
+        registerContainer.classList.remove('hidden');
+    });
+
+    showLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        registerContainer.classList.add('hidden');
+        loginContainer.classList.remove('hidden');
+    });
+
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = e.target.username.value;
@@ -30,6 +47,8 @@ export function init(onLogin, onLogout) {
             await api.register(username, password, deviceId);
             alert('登録が成功しました！ログインしてください。');
             e.target.reset();
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
         } catch (error) {
             alert(`登録エラー: ${error.message}`);
         }
@@ -53,7 +72,6 @@ export function init(onLogin, onLogout) {
         logout();
     });
 
-    // Глобальное событие для выхода из системы из любой части приложения
     window.addEventListener('logout', () => {
         logout();
     });
