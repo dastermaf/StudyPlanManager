@@ -28,7 +28,7 @@ const nextWeekBtn = document.getElementById('next-week');
 const weeklyProgressBar = document.getElementById('weekly-progress-bar');
 const weeklyProgressText = document.getElementById('weekly-progress-text');
 
-// Модальное окно задач
+// モーダルウィンドウ
 const modalOverlay = document.getElementById('modal-overlay');
 const modalContent = document.getElementById('modal-content');
 const modalTitle = document.getElementById('modal-title');
@@ -38,14 +38,14 @@ const taskTestCheckbox = document.getElementById('task-test');
 const taskNotesTextarea = document.getElementById('task-notes');
 let activeModalKey = null;
 
-// --- Инициализация UI ---
+// --- UIの初期化 ---
 export function initUI() {
     navPlanner.addEventListener('click', () => switchView(true));
     navDashboard.addEventListener('click', () => switchView(false));
     prevWeekBtn.addEventListener('click', () => navigateWeek(-1));
     nextWeekBtn.addEventListener('click', () => navigateWeek(1));
 
-    modalOverlay.addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
     modalCloseBtn.addEventListener('click', closeModal);
 
     taskVodCheckbox.addEventListener('change', handleModalTaskChange);
@@ -71,7 +71,7 @@ function navigateWeek(direction) {
     }
 }
 
-// --- Рендеринг ---
+// --- レンダリング ---
 export function renderWeek(weekIndex) {
     if (!state.isDataLoaded) return;
     planContainer.innerHTML = '';
@@ -127,7 +127,7 @@ function createSubjectCard(subject, subjectIdx, currentWeek) {
     card.innerHTML = `
         <div>
             <h3 class="font-bold text-lg text-indigo-800">${subject.name}</h3>
-            <p class="text-xs text-gray-500 mb-4">Общий прогресс</p>
+            <p class="text-xs text-gray-500 mb-4">全体の進捗</p>
             <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
                 <div id="progress-${subjectIdx}" class="progress-bar-fg h-2.5 rounded-full"></div>
             </div>
@@ -139,7 +139,7 @@ function createSubjectCard(subject, subjectIdx, currentWeek) {
 }
 
 
-// --- Логика модальных окон ---
+// --- モーダルウィンドウのロジック ---
 function showModal(key) {
     activeModalKey = key;
     const [subject, lecture] = key.split('-');
@@ -183,7 +183,7 @@ function handleModalTaskChange() {
     updateProgressBars();
 }
 
-// --- Обновление UI элементов ---
+// --- UI要素の更新 ---
 export function updateNavButtons() {
     prevWeekBtn.disabled = state.currentWeekIndex === 0;
     nextWeekBtn.disabled = state.currentWeekIndex >= WEEKS_COUNT;
@@ -198,7 +198,7 @@ function updateLectureBoxAppearance(key) {
     const [, lectureNumStr] = key.split('-');
     const isRecommended = parseInt(lectureNumStr) === (state.currentWeekIndex + 1);
 
-    box.className = 'lecture-box'; // Сброс классов
+    box.className = 'lecture-box';
     if (status === 'completed') box.classList.add('completed');
     else if (status === 'in-progress') box.classList.add('in-progress');
     else if (isRecommended) box.classList.add('recommended');
@@ -242,9 +242,9 @@ function updateProgressBars() {
     weeklyProgressText.textContent = `${Math.round(weeklyProgress)}%`;
 }
 
-// --- Логика дашборда ---
+// --- ダッシュボードのロジック ---
 function renderDashboard() {
-    const theme = localStorage.getItem('theme') || 'light';
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
     const gridColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     const textColor = theme === 'dark' ? '#d1d5db' : '#1f2937';
 
@@ -265,7 +265,7 @@ function renderDashboard() {
     state.charts.overall = new Chart(overallCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Завершено', 'Осталось'],
+            labels: ['完了', '残り'],
             datasets: [{ data: [completedLecturesCount, remainingLectures], backgroundColor: ['#22c55e', '#ef4444'], borderColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderWidth: 4 }]
         },
         options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: textColor } } }, cutout: '70%' }
@@ -285,7 +285,7 @@ function renderDashboard() {
         type: 'bar',
         data: {
             labels: subjectLabels,
-            datasets: [{ label: '% Завершения', data: subjectData, backgroundColor: 'rgba(79, 70, 229, 0.8)', borderRadius: 5 }]
+            datasets: [{ label: '完了率', data: subjectData, backgroundColor: 'rgba(79, 70, 229, 0.8)', borderRadius: 5 }]
         },
         options: {
             indexAxis: 'y', responsive: true, plugins: { legend: { display: false } },

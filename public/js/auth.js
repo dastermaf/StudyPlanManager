@@ -33,14 +33,14 @@ async function handleLogin(e) {
         state.userToken = data.accessToken;
         localStorage.setItem('accessToken', state.userToken);
 
-        await initializeCrypto(password); // Инициализируем ключ шифрования
+        await initializeCrypto(password);
 
         await loadInitialData();
         welcomeUser.textContent = `ようこそ、${username}さん`;
         showPlanner();
         renderWeek(state.currentWeekIndex);
     } catch (error) {
-        loginError.textContent = error.message || 'Неверные данные для входа.';
+        loginError.textContent = error.message || 'ログイン情報が正しくありません。';
         loginError.classList.remove('hidden');
     }
 }
@@ -55,9 +55,9 @@ async function handleRegister(e) {
             getOrSetDeviceId()
         );
         toggleForms(true);
-        alert('Регистрация успешна! Теперь вы можете войти.');
+        alert('登録が完了しました。ログインしてください。');
     } catch (error) {
-        registerError.textContent = error.message || 'Ошибка регистрации.';
+        registerError.textContent = error.message || '登録中にエラーが発生しました。';
         registerError.classList.remove('hidden');
     }
 }
@@ -69,6 +69,7 @@ export function logout() {
     state.isDataLoaded = false;
     state.encryptionKey = null;
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('theme'); // Теманы да жою
     showAuth();
 }
 
@@ -96,3 +97,4 @@ function getOrSetDeviceId() {
     }
     return deviceId;
 }
+
