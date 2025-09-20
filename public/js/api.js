@@ -1,38 +1,56 @@
-import { state } from './app.js';
+const API_URL = '';
 
-const apiFetch = async (endpoint, options = {}) => {
-    const defaultHeaders = { 'Content-Type': 'application/json' };
-    if (state.userToken) {
-        defaultHeaders['Authorization'] = `Bearer ${state.userToken}`;
-    }
-    const config = {
-        ...options,
-        headers: {
-            ...defaultHeaders,
-            ...options.headers,
-        },
+async function request(endpoint, options = {}) {
+    const token = localStorage.getItem('accessToken');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
     };
-    const response = await fetch(`/api${endpoint}`, config);
-    const responseData = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
     }
-    return responseData;
-};
 
-export const loginUser = (username, password) => apiFetch('/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-});
+    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
 
-export const registerUser = (username, password, deviceId) => apiFetch('/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password, deviceId }),
-});
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            // Если токен недействителен, выходим из системы
+            window.dispatchEvent(new CustomEvent('logout'));
+        }
+        const errorData = await response.json().catch(() => ({ error: '不明なエラー' }));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
 
-export const loadProgress = () => apiFetch('/progress');
+    // Для запросов без тела ответа (например, 204 No Content)
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+        return response.json();
+    }
+    return null;
+}
 
-export const saveProgress = (data) => apiFetch('/progress', {
-    method: 'POST',
-    body: JSON.stringify({ progressData: data }),
-});
+export function register(username, password, deviceId) {
+    return request('/api/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password, deviceId }),
+    });
+}
+
+export function login(username, password) {
+    return request('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+    });
+}
+
+export function getProgress() {
+    return request('/api/progress');
+}
+
+export function saveProgress(progress) {
+    return request('/api/progress', {
+        method: 'POST',
+        body: JSON.stringify(progress),
+    });
+}
+

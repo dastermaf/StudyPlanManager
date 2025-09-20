@@ -1,39 +1,25 @@
-import { state } from './app.js';
-import { debouncedSave } from './app.js';
+let onThemeChangeCallback;
 
-const themeToggle = document.getElementById('theme-toggle');
-const themeIconLight = document.getElementById('theme-icon-light');
-const themeIconDark = document.getElementById('theme-icon-dark');
-
-export function initTheme() {
-    themeToggle.addEventListener('click', toggleTheme);
-    // Применяем тему при загрузке, если она уже есть в данных
-    const initialTheme = (state.progressData.settings && state.progressData.settings.theme) || 'light';
-    applyTheme(initialTheme);
-}
-
-function toggleTheme() {
-    const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    applyTheme(newTheme);
-
-    // Сохраняем выбор темы в состоянии и отправляем на сервер
-    if (!state.progressData.settings) {
-        state.progressData.settings = {};
-    }
-    state.progressData.settings.theme = newTheme;
-    debouncedSave();
+export function init(onThemeChange) {
+    onThemeChangeCallback = onThemeChange;
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.addEventListener('click', () => {
+        const newTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
+        applyTheme(newTheme);
+        onThemeChangeCallback('theme', newTheme);
+    });
 }
 
 export function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    themeIconLight.classList.toggle('hidden', theme === 'dark');
-    themeIconDark.classList.toggle('hidden', theme === 'light');
-    // Обновляем графики, если они уже отрисованы
-    if (state.isDataLoaded && document.getElementById('dashboard-view').classList.contains('hidden') === false) {
-        // Небольшая задержка, чтобы DOM успел обновиться
-        setTimeout(() => {
-            const uiModule = import('./ui.js');
-            uiModule.then(ui => ui.renderDashboard());
-        }, 50);
+    const themeToggle = document.getElementById('theme-toggle');
+    const icon = themeToggle.querySelector('svg');
+
+    if (theme === 'dark') {
+        document.body.classList.add('dark');
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />`;
+    } else {
+        document.body.classList.remove('dark');
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />`;
     }
 }
+

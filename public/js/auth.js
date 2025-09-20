@@ -1,100 +1,78 @@
-import { state, loadInitialData } from './app.js';
-import { initializeCrypto } from './crypto-utils.js';
-import { loginUser, registerUser } from './api.js';
-import { renderWeek } from './ui.js';
+import * as api from './api.js';
 
-const authContainer = document.getElementById('auth-container');
-const plannerApp = document.getElementById('planner-app');
-const loginForm = document.getElementById('login-form');
-const registerForm = document.getElementById('register-form');
-const loginError = document.getElementById('login-error');
-const registerError = document.getElementById('register-error');
-const showRegisterLink = document.getElementById('show-register');
-const showLoginLink = document.getElementById('show-login');
-const logoutBtn = document.getElementById('logout-btn');
-const welcomeUser = document.getElementById('welcome-user');
+let onLoginCallback;
+let onLogoutCallback;
 
-export function initAuth() {
-    loginForm.addEventListener('submit', handleLogin);
-    registerForm.addEventListener('submit', handleRegister);
-    logoutBtn.addEventListener('click', logout);
-    showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleForms(false); });
-    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleForms(true); });
-}
-
-async function handleLogin(e) {
-    e.preventDefault();
-    loginError.classList.add('hidden');
-    const username = e.target.elements['login-username'].value;
-    const password = e.target.elements['login-password'].value;
-
-    try {
-        const data = await loginUser(username, password);
-        state.userToken = data.accessToken;
-        localStorage.setItem('accessToken', state.userToken);
-
-        await initializeCrypto(password);
-
-        await loadInitialData();
-        welcomeUser.textContent = `ようこそ、${username}さん`;
-        showPlanner();
-        renderWeek(state.currentWeekIndex);
-    } catch (error) {
-        loginError.textContent = error.message || 'ログイン情報が正しくありません。';
-        loginError.classList.remove('hidden');
-    }
-}
-
-async function handleRegister(e) {
-    e.preventDefault();
-    registerError.classList.add('hidden');
-    try {
-        await registerUser(
-            e.target.elements['register-username'].value,
-            e.target.elements['register-password'].value,
-            getOrSetDeviceId()
-        );
-        toggleForms(true);
-        alert('登録が完了しました。ログインしてください。');
-    } catch (error) {
-        registerError.textContent = error.message || '登録中にエラーが発生しました。';
-        registerError.classList.remove('hidden');
-    }
-}
-
-export function logout() {
-    state.userToken = null;
-    state.progressData = {};
-    state.currentWeekIndex = 0;
-    state.isDataLoaded = false;
-    state.encryptionKey = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('theme'); // Теманы да жою
-    showAuth();
-}
-
-export function showPlanner() {
-    authContainer.classList.add('hidden');
-    plannerApp.classList.remove('hidden');
-}
-
-export function showAuth() {
-    authContainer.classList.remove('hidden');
-    plannerApp.classList.add('hidden');
-    toggleForms(true);
-}
-
-function toggleForms(showLogin) {
-    loginForm.classList.toggle('hidden', !showLogin);
-    registerForm.classList.toggle('hidden', showLogin);
-}
-
-function getOrSetDeviceId() {
+function getDeviceId() {
     let deviceId = localStorage.getItem('deviceId');
     if (!deviceId) {
         deviceId = crypto.randomUUID();
         localStorage.setItem('deviceId', deviceId);
     }
     return deviceId;
+}
+
+export function init(onLogin, onLogout) {
+    onLoginCallback = onLogin;
+    onLogoutCallback = onLogout;
+
+    const registerForm = document.getElementById('register-form');
+    const loginForm = document.getElementById('login-form');
+    const logoutButton = document.getElementById('logout-button');
+
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = e.target.username.value;
+        const password = e.target.password.value;
+        const deviceId = getDeviceId();
+
+        try {
+            await api.register(username, password, deviceId);
+            alert('登録が成功しました！ログインしてください。');
+            e.target.reset();
+        } catch (error) {
+            alert(`登録エラー: ${error.message}`);
+        }
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = e.target.username.value;
+        const password = e.target.password.value;
+        try {
+            const data = await api.login(username, password);
+            localStorage.setItem('accessToken', data.accessToken);
+            onLoginCallback(username);
+        } catch (error) {
+            alert(`ログインエラー: ${error.message}`);
+        }
+    });
+
+    logoutButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+    });
+
+    // Глобальное событие для выхода из системы из любой части приложения
+    window.addEventListener('logout', () => {
+        logout();
+    });
+}
+
+export function logout() {
+    onLogoutCallback();
+}
+
+export function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
 }
 

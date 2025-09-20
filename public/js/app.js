@@ -1,74 +1,99 @@
-import { initAuth, showAuth, showPlanner, logout } from './auth.js';
-import { initUI, renderWeek, updateNavButtons } from './ui.js';
-import { loadProgress, saveProgress } from './api.js';
-import { applyTheme, initTheme } from './theme.js';
-import { initializeCrypto, encryptData, decryptData } from './crypto-utils.js';
+import * as api from './api.js';
+import * as auth from './auth.js';
+import * as ui from './ui.js';
+import * as theme from './theme.js';
 
-// --- Глобальное состояние приложения ---
-export const state = {
-    currentWeekIndex: 0,
-    progressData: {},
-    userToken: null,
-    charts: {},
-    isDataLoaded: false,
-    encryptionKey: null
-};
+let progress = {};
 
-// --- Инициализация приложения ---
-document.addEventListener('DOMContentLoaded', () => {
-    initAuth();
-    initUI();
-    initTheme();
-    initializeApp();
-});
+async function initialize() {
+    auth.init(onLoginSuccess, onLogout);
+    theme.init(saveSettings);
 
-async function initializeApp() {
-    state.userToken = localStorage.getItem('accessToken');
-    if (state.userToken) {
-        // Если есть токен, сразу показываем планировщик, пока грузятся данные
-        const decodedToken = JSON.parse(atob(state.userToken.split('.')[1]));
-        document.getElementById('welcome-user').textContent = `ようこそ、${decodedToken.username}さん`;
-        showPlanner();
-        await loadInitialData();
-        renderWeek(state.currentWeekIndex);
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+        const user = auth.parseJwt(token);
+        if (user) {
+            onLoginSuccess(user.username);
+        } else {
+            onLogout();
+        }
     } else {
-        showAuth();
+        onLogout();
     }
 }
 
-export async function loadInitialData() {
-    if (!state.userToken) return;
+async function onLoginSuccess(username) {
+    ui.showMainContent(username);
+    await loadUserProgress();
+    theme.applyTheme(progress.settings.theme || 'light');
+}
+
+function onLogout() {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('deviceId');
+    progress = {};
+    ui.showAuthContent();
+}
+
+async function loadUserProgress() {
     try {
-        const encryptedData = await loadProgress();
-        if (encryptedData && encryptedData.encrypted) {
-            progressData = await decryptData(encryptedData.encrypted);
-            // Применяем сохраненную тему
-            if (progressData.settings && progressData.settings.theme) {
-                applyTheme(progressData.settings.theme);
-            }
-        } else {
-            // Инициализация для нового пользователя
-            progressData = { settings: { theme: 'light' }, lectures: {} };
-        }
-        state.progressData = progressData;
-        state.isDataLoaded = true;
+        const data = await api.getProgress();
+        progress = data || { settings: { theme: 'light' }, lectures: {} };
+        if (!progress.settings) progress.settings = { theme: 'light' };
+        if (!progress.lectures) progress.lectures = {};
+        ui.renderUI(progress, handleLectureClick, handleNoteChange);
     } catch (error) {
-        console.error("Failed to load or decrypt data:", error);
-        // Если расшифровка не удалась (например, из-за смены пароля), выходим
-        logout();
+        console.error('進捗の読み込みに失敗しました:', error);
+        auth.logout();
     }
+}
+
+function handleLectureClick(courseId, lectureId, task) {
+    const lecture = progress.lectures[courseId]?.[lectureId] || { vod: false, test: false, note: '' };
+    lecture[task] = !lecture[task];
+
+    if (!progress.lectures[courseId]) {
+        progress.lectures[courseId] = {};
+    }
+    progress.lectures[courseId][lectureId] = lecture;
+
+    ui.updateLectureState(courseId, lectureId, lecture);
+    ui.updateCourseProgress(courseId, progress.lectures[courseId]);
+    ui.updateDashboard(progress.lectures);
+    saveProgress();
+}
+
+function handleNoteChange(courseId, lectureId, note) {
+    if (!progress.lectures[courseId]) {
+        progress.lectures[courseId] = {};
+    }
+    if (!progress.lectures[courseId][lectureId]) {
+        progress.lectures[courseId][lectureId] = { vod: false, test: false, note: '' };
+    }
+    progress.lectures[courseId][lectureId].note = note;
+    saveProgress();
+}
+
+function saveSettings(key, value) {
+    if (!progress.settings) {
+        progress.settings = {};
+    }
+    progress.settings[key] = value;
+    saveProgress();
 }
 
 let saveTimeout;
-export function debouncedSave() {
+function saveProgress() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
-        if (!state.userToken || !state.isDataLoaded) return;
         try {
-            const encryptedString = await encryptData(state.progressData);
-            await saveProgress({ encrypted: encryptedString });
+            await api.saveProgress(progress);
+            console.log("進捗が正常に保存されました。");
         } catch (error) {
-            console.error("Failed to encrypt or save data:", error);
+            console.error('進捗の保存に失敗しました:', error);
         }
-    }, 1500);
+    }, 1000);
 }
+
+document.addEventListener('DOMContentLoaded', initialize);
+

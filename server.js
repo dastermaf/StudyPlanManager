@@ -6,7 +6,6 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const crypto = require('crypto');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -82,11 +81,11 @@ app.post('/api/register', registerLimiter, async (req, res) => {
             const newUser = newUserRes.rows[0];
             await client.query('INSERT INTO device_registrations (device_id, user_id) VALUES ($1, $2)', [deviceId, newUser.id]);
 
-            // Создаем пустой прогресс, шифруем его "пустым" ключом (будет перезаписан при первом сохранении)
-            const emptyProgress = JSON.stringify({ settings: { theme: 'light' }, lectures: {} });
+            const emptyProgress = { settings: { theme: 'light' }, lectures: {} };
+
             await client.query(
                 "INSERT INTO progress (user_id, data) VALUES ($1, $2)",
-                [newUser.id, emptyProgress] // Временно сохраняем как JSON строку
+                [newUser.id, emptyProgress]
             );
 
             await client.query('COMMIT');
@@ -127,10 +126,9 @@ app.get('/api/progress', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [req.user.id]);
         if (result.rows.length > 0) {
-            res.json({ encryptedData: result.rows[0].data });
+            res.json(result.rows[0].data);
         } else {
-            // Если прогресса нет, отправляем пустые данные для шифрования на клиенте
-            res.json({ encryptedData: null });
+            res.json({ settings: { theme: 'light' }, lectures: {} });
         }
     } catch (error) {
         console.error('進捗データの読み込みエラー:', error);
@@ -140,13 +138,13 @@ app.get('/api/progress', authenticateToken, async (req, res) => {
 
 app.post('/api/progress', authenticateToken, async (req, res) => {
     try {
-        const { encryptedData } = req.body;
-        if (!encryptedData) return res.status(400).json({error: "保存するデータがありません。"});
+        const progressData = req.body;
+        if (!progressData) return res.status(400).json({error: "保存するデータがありません。"});
 
         await pool.query(
             `INSERT INTO progress (user_id, data) VALUES ($1, $2)
              ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = CURRENT_TIMESTAMP`,
-            [req.user.id, encryptedData]
+            [req.user.id, progressData]
         );
         res.status(200).json({ success: true, message: '進捗が保存されました。' });
     } catch (error) {
@@ -185,18 +183,18 @@ const initializeDatabase = async () => {
             WHERE table_name='progress' AND column_name='data';
         `);
 
-        if (res.rowCount === 0 || res.rows[0].data_type.toLowerCase().includes('json')) {
+        if (res.rowCount === 0 || res.rows[0].data_type.toLowerCase().includes('text')) {
             console.log('古い、または存在しない "progress" テーブルの構造を検出しました。再作成します...');
             await client.query('DROP TABLE IF EXISTS progress;');
             await client.query(`
-                CREATE TABLE progress (
+                 CREATE TABLE progress (
                     user_id INTEGER PRIMARY KEY,
-                    data TEXT,
+                    data JSONB,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );
             `);
-            console.log('テーブル "progress" が暗号化データ用のテキストフィールドで正常に作成されました。');
+            console.log('テーブル "progress" が新しいJSONB構造で正常に作成されました。');
         } else {
             console.log('テーブル "progress" の準備ができました。');
         }
