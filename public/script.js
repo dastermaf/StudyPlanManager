@@ -4,6 +4,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let progressData = {};
     let userToken = null;
 
+    // --- Функция для получения/установки ID устройства ---
+    const getOrSetDeviceId = () => {
+        let deviceId = localStorage.getItem('deviceId');
+        if (!deviceId) {
+            deviceId = crypto.randomUUID();
+            localStorage.setItem('deviceId', deviceId);
+        }
+        return deviceId;
+    };
+
     // --- Constants ---
     const WEEKS_COUNT = 15;
     const SUBJECTS = [
@@ -69,11 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
             },
         };
         const response = await fetch(`/api${endpoint}`, config);
+        const responseData = await response.json().catch(() => ({}));
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
         }
-        return response.json();
+        return responseData;
     };
 
     const saveProgress = async () => {
@@ -106,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Failed to load progress:', error);
-            // On failure, initialize empty progress
             SUBJECTS.forEach(subject => {
                 for (let i = 1; i <= subject.totalLectures; i++) {
                     progressData[`${subject.name}-${i}`] = { vod: false, test: false };
@@ -118,14 +127,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- UI Logic ---
     const showPlanner = async () => {
         const token = localStorage.getItem('accessToken');
-        const decodedToken = token ? JSON.parse(atob(token.split('.')[1])) : null;
-        if (decodedToken) {
-            welcomeUser.textContent = `ようこそ、${decodedToken.username}さん`;
-            authContainer.classList.add('hidden');
-            plannerApp.classList.remove('hidden');
-            await loadProgress();
-            renderWeek(currentWeekIndex);
-        }
+        if (!token) { showAuth(); return; }
+        const decodedToken = JSON.parse(atob(token.split('.')[1]));
+        welcomeUser.textContent = `ようこそ、${decodedToken.username}さん`;
+        authContainer.classList.add('hidden');
+        plannerApp.classList.remove('hidden');
+        await loadProgress();
+        renderWeek(currentWeekIndex);
     };
 
     const showAuth = () => {
@@ -239,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const [subject, lecture] = key.split('-');
         modalTitle.textContent = `${subject} - 第${lecture}回`;
 
-        const lectureProgress = progressData[key];
+        const lectureProgress = progressData[key] || { vod: false, test: false };
         taskVodCheckbox.checked = lectureProgress.vod;
         taskTestCheckbox.checked = lectureProgress.test;
 
@@ -277,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('accessToken', userToken);
             await showPlanner();
         } catch (error) {
-            loginError.textContent = 'ユーザー名またはパスワードが正しくありません。';
+            loginError.textContent = error.message || 'ユーザー名またはパスワードが正しくありません。';
             loginError.classList.remove('hidden');
         }
     });
@@ -291,13 +299,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     username: e.target.elements['register-username'].value,
                     password: e.target.elements['register-password'].value,
+                    deviceId: getOrSetDeviceId() // ID устройства
                 }),
             });
-            // Switch to login form after successful registration
             showAuth();
             alert('登録が成功しました！ログインしてください。');
         } catch (error) {
-            registerError.textContent = 'このユーザー名はすでに使用されています。';
+            registerError.textContent = error.message || 'このユーザー名はすでに使用されています。';
             registerError.classList.remove('hidden');
         }
     });
@@ -310,17 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showAuth();
     });
 
-    showRegisterLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        loginForm.classList.add('hidden');
-        registerForm.classList.remove('hidden');
-    });
-
-    showLoginLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        registerForm.classList.add('hidden');
-        loginForm.classList.remove('hidden');
-    });
+    showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); });
+    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
 
     const updateNavButtons = () => {
         prevWeekBtn.disabled = currentWeekIndex === 0;
@@ -347,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const [ , lectureNumStr ] = activeModalKey.split('-');
             const isRecommended = parseInt(lectureNumStr) === (currentWeekIndex + 1);
 
-            box.className = 'lecture-box'; // Reset classes
+            box.className = 'lecture-box';
             if (status === 'completed') box.classList.add('completed');
             else if (status === 'in-progress') box.classList.add('in-progress');
             else if (isRecommended) box.classList.add('recommended');
@@ -367,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showAuth();
         }
     };
-
     initializeApp();
 });
 
