@@ -1,151 +1,137 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学習計画管理サイト</title>
+    <title>Учебный планировщик</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Библиотека для шифрования -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-100 font-[Noto Sans JP]">
+<body class="bg-gray-100 text-gray-800 font-sans transition-colors duration-300">
 
-<!-- Auth Container -->
-<div id="auth-container" class="min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <!-- Login Form -->
+<!-- Экран аутентификации -->
+<div id="auth-container" class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg">
+        <!-- Форма входа -->
         <form id="login-form">
-            <h2 class="text-3xl font-bold text-center text-indigo-800 mb-6">ログイン</h2>
-            <div id="login-error" class="text-red-500 text-center mb-4 hidden"></div>
+            <h2 class="text-2xl font-bold text-center text-indigo-600 mb-6">Вход</h2>
             <div class="mb-4">
-                <label for="login-username" class="block text-gray-700 font-bold mb-2">ユーザー名</label>
-                <input type="text" id="login-username" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-indigo-500" required>
+                <label for="login-username" class="block text-sm font-medium text-gray-700">Имя пользователя</label>
+                <input type="text" id="login-username" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
             <div class="mb-6">
-                <label for="login-password" class="block text-gray-700 font-bold mb-2">パスワード</label>
-                <input type="password" id="login-password" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-indigo-500" required>
+                <label for="login-password" class="block text-sm font-medium text-gray-700">Пароль</label>
+                <input type="password" id="login-password" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
-            <div class="flex items-center justify-between">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline w-full">
-                    ログイン
-                </button>
-            </div>
-            <p class="text-center text-gray-500 text-sm mt-6">
-                アカウントがありませんか？ <a href="#" id="show-register" class="font-bold text-indigo-600 hover:text-indigo-800">登録</a>
-            </p>
+            <p id="login-error" class="text-red-500 text-sm text-center mb-4 hidden"></p>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Войти</button>
+            <p class="mt-4 text-center text-sm">Нет аккаунта? <a href="#" id="show-register" class="font-medium text-indigo-600 hover:text-indigo-500">Зарегистрироваться</a></p>
         </form>
-
-        <!-- Register Form (Hidden by default) -->
+        <!-- Форма регистрации -->
         <form id="register-form" class="hidden">
-            <h2 class="text-3xl font-bold text-center text-indigo-800 mb-6">登録</h2>
-            <div id="register-error" class="text-red-500 text-center mb-4 hidden"></div>
+            <h2 class="text-2xl font-bold text-center text-indigo-600 mb-6">Регистрация</h2>
             <div class="mb-4">
-                <label for="register-username" class="block text-gray-700 font-bold mb-2">ユーザー名</label>
-                <input type="text" id="register-username" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-indigo-500" required>
+                <label for="register-username" class="block text-sm font-medium text-gray-700">Имя пользователя</label>
+                <input type="text" id="register-username" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
             <div class="mb-6">
-                <label for="register-password" class="block text-gray-700 font-bold mb-2">パスワード</label>
-                <input type="password" id="register-password" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-indigo-500" required>
+                <label for="register-password" class="block text-sm font-medium text-gray-700">Пароль</label>
+                <input type="password" id="register-password" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
-            <div class="flex items-center justify-between">
-                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline w-full">
-                    登録
-                </button>
-            </div>
-            <p class="text-center text-gray-500 text-sm mt-6">
-                すでにアカウントをお持ちですか？ <a href="#" id="show-login" class="font-bold text-indigo-600 hover:text-indigo-800">ログイン</a>
-            </p>
+            <p id="register-error" class="text-red-500 text-sm text-center mb-4 hidden"></p>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Создать аккаунт</button>
+            <p class="mt-4 text-center text-sm">Уже есть аккаунт? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Войти</a></p>
         </form>
+        <div class="text-center mt-6">
+            <a href="about.html" target="_blank" class="text-sm text-gray-500 hover:text-indigo-600">О сайте и конфиденциальности</a>
+        </div>
     </div>
 </div>
 
-<!-- Planner Container (Hidden by default) -->
-<div id="planner-app" class="container mx-auto p-4 md:p-8 max-w-7xl hidden">
-    <!-- Header -->
-    <header class="bg-white p-6 rounded-2xl shadow-lg mb-8">
-        <div class="flex flex-col md:flex-row justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-indigo-800" id="week-title">第 1 週</h1>
-                <p class="text-gray-500 mt-1" id="week-period">9/22～9/28</p>
-            </div>
-            <div class="flex items-center space-x-2 md:space-x-4 mt-4 md:mt-0">
-                <span id="welcome-user" class="text-gray-700 font-semibold"></span>
-                <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">ログアウト</button>
-                <button id="prev-week" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-300">前の週</button>
-                <button id="next-week" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">次の週</button>
-            </div>
+<!-- Основной интерфейс приложения -->
+<div id="planner-app" class="hidden max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <!-- Header, навигация и кнопки остаются здесь -->
+    <header class="flex justify-between items-center mb-8 flex-wrap gap-4">
+        <div class="flex items-center space-x-4">
+            <h1 id="welcome-user" class="text-2xl font-bold text-gray-900"></h1>
+            <nav class="flex space-x-2 bg-gray-200 p-1 rounded-lg">
+                <button id="nav-planner" class="px-3 py-1 text-sm font-medium rounded-md nav-active">Планировщик</button>
+                <button id="nav-dashboard" class="px-3 py-1 text-sm font-medium rounded-md">Дашборд</button>
+            </nav>
         </div>
-        <!-- Overall Progress Bar -->
-        <div class="mt-6">
-            <p class="text-sm font-semibold text-gray-700 mb-2">今週の全体の進捗（推奨講義の完了率）</p>
-            <div class="w-full bg-gray-200 rounded-full h-4">
-                <div id="weekly-progress-bar" class="bg-green-500 h-4 text-xs font-medium text-white text-center p-0.5 leading-none rounded-full transition-all duration-500" style="width: 0%">
-                    <span id="weekly-progress-text">0%</span>
-                </div>
-            </div>
+        <div class="flex items-center space-x-4">
+            <button id="theme-toggle" class="p-2 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300">
+                <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            </button>
+            <button id="logout-btn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 text-sm">Выйти</button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main id="plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Subject cards will be inserted here by JavaScript -->
+    <!-- View планировщика -->
+    <main id="planner-view">
+        <div class="bg-white p-6 rounded-2xl shadow-md mb-8">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <button id="prev-week" class="nav-button">&larr; Пред. неделя</button>
+                <div class="text-center">
+                    <h2 id="week-title" class="text-xl font-bold text-indigo-700"></h2>
+                    <p id="week-period" class="text-sm text-gray-500"></p>
+                </div>
+                <button id="next-week" class="nav-button">След. неделя &rarr;</button>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-4">
+                <div id="weekly-progress-bar" class="bg-green-500 h-4 rounded-full transition-all duration-500" style="width: 0%;"></div>
+            </div>
+            <p class="text-center text-sm mt-2 text-gray-600">Прогресс на этой неделе: <span id="weekly-progress-text" class="font-bold">0%</span></p>
+        </div>
+        <div id="plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="final-prep-container" class="hidden text-center bg-white p-8 rounded-2xl shadow-md">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">Поздравляем!</h2>
+            <p class="text-gray-600">Вы завершили все лекции. Теперь у вас есть время для подготовки к экзаменам.</p>
+        </div>
     </main>
 
-    <div id="final-prep-container" class="hidden bg-white p-8 rounded-2xl shadow-lg text-center">
-        <h2 class="text-3xl font-bold text-indigo-800 mb-4">最終準備期間</h2>
-        <p class="text-gray-600 mb-2">1/5～2/1</p>
-        <p class="text-lg mb-6">全講義の視聴が完了しました！ここからは期末試験と最終課題に集中しましょう。</p>
-        <div class="space-y-4 text-left max-w-2xl mx-auto">
-            <div class="bg-indigo-50 p-4 rounded-lg">
-                <h3 class="font-bold text-indigo-700">✅ 1週目 (1/5～1/11)</h3>
-                <ul class="list-disc list-inside text-gray-700 mt-2">
-                    <li>期末試験がある科目の総復習（1回目）</li>
-                    <li>苦手分野を特定し、集中的に学び直す</li>
-                    <li>「文化を読みとくB」の最終課題に着手する</li>
-                </ul>
+    <!-- View дашборда -->
+    <aside id="dashboard-view" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-md">
+                <h3 class="font-bold text-lg mb-4 text-indigo-800">Общий прогресс</h3>
+                <canvas id="overall-progress-chart"></canvas>
             </div>
-            <div class="bg-green-50 p-4 rounded-lg">
-                <h3 class="font-bold text-green-700">✅ 2週目 (1/12～1/18)</h3>
-                <ul class="list-disc list-inside text-gray-700 mt-2">
-                    <li>期末試験科目の総復習（2回目）、実践的な対策を行う</li>
-                    <li>「文化を読みとくB」の最終課題を完成させ、提出する</li>
-                    <li>全てのレポート、課題が提出済みか最終確認する</li>
-                </ul>
-            </div>
-            <div class="bg-red-50 p-4 rounded-lg">
-                <h3 class="font-bold text-red-700">🔥 試験期間 (1/19～2/1)</h3>
-                <p class="text-gray-700 mt-2">
-                    最終確認を行い、万全の状態で試験に臨みましょう！
-                </p>
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-md">
+                <h3 class="font-bold text-lg mb-4 text-indigo-800">Прогресс по предметам</h3>
+                <canvas id="subjects-progress-chart"></canvas>
             </div>
         </div>
-    </div>
+    </aside>
+
 </div>
 
-<!-- Modal -->
-<div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 opacity-0"></div>
-<div id="modal-content" class="fixed inset-0 flex items-center justify-center p-4 hidden transition-all duration-300 opacity-0 scale-95">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 id="modal-title" class="text-2xl font-bold text-indigo-800"></h2>
-            <button id="modal-close" class="text-gray-400 hover:text-gray-600">&times;</button>
-        </div>
-        <div class="space-y-4">
-            <label for="task-vod" class="flex items-center p-4 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200">
-                <input type="checkbox" id="task-vod" class="h-6 w-6 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <span class="ml-4 text-lg font-medium text-gray-700">VOD視聴</span>
-            </label>
-            <label for="task-test" class="flex items-center p-4 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200">
-                <input type="checkbox" id="task-test" class="h-6 w-6 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <span class="ml-4 text-lg font-medium text-gray-700">評価に加えるテスト</span>
-            </label>
+<!-- Модальное окно для задач -->
+<div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden opacity-0 transition-opacity duration-300 z-40"></div>
+<div id="modal-content" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg hidden opacity-0 scale-95 transition-all duration-300 z-50">
+    <h3 id="modal-title" class="text-xl font-bold mb-6 text-indigo-700"></h3>
+    <div class="space-y-4">
+        <label class="flex items-center p-3 rounded-lg hover:bg-gray-100 cursor-pointer"><input type="checkbox" id="task-vod" class="h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500"><span class="ml-3 text-gray-700">VOD просмотрен</span></label>
+        <label class="flex items-center p-3 rounded-lg hover:bg-gray-100 cursor-pointer"><input type="checkbox" id="task-test" class="h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500"><span class="ml-3 text-gray-700">Тест сдан</span></label>
+        <div>
+            <label for="task-notes" class="block text-sm font-medium text-gray-700 mb-2">Личные заметки (зашифровано):</label>
+            <textarea id="task-notes" rows="4" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Только вы можете видеть эти заметки..."></textarea>
         </div>
     </div>
+    <button id="modal-close" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+    </button>
 </div>
 
-<script src="script.js"></script>
+<!-- Подключение модульных скриптов -->
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
 
