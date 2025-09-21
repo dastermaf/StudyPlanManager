@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const helmet = require('helmet');
+const helmet = require('helmet'); // helmetを再度使用します
 const { initializeDatabase } = require('./db');
 const apiRoutes = require('./routes/api');
 const pageRoutes = require('./routes/pages');
@@ -16,28 +16,31 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 console.log("LOG: server.js: Запуск сервера...");
-// リバースプロксиの背後で動作させるための設定
+// リバースプロキシの背後で動作させるための設定
 app.set('trust proxy', 1);
 
-// --- セキュリティと互換性を両立させる最終的なCSP設定 ---
+// --- helmetのCSP機能のみを無効化 ---
+// これにより、helmetが提供する他の重要なセキュリティ機能はすべて有効なままになります。
 app.use(
-    helmet.contentSecurityPolicy({
-        directives: {
-            // デフォルトでは、自分自身のドメインからのリソースのみを許可
-            defaultSrc: ["'self'"],
-            // スクリプトは自分自身のドメインと信頼できるCDNから許可
-            scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-            // スタイルシートは自分自身のドメイン、Google Fonts、インラインスタイルを許可
-            styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
-            // 画像は自分自身のドメイン、データURI、任意のHTTPSソースから許可
-            imgSrc: ["'self'", "data:", "https:"],
-            // 接続先は自分自身のドメインとGoogle Apps Scriptを許可
-            connectSrc: ["'self'", "https://script.google.com", "https://script.googleusercontent.com"],
-            // フォントは自分自身のドメインとGoogle Fontsから許可
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        },
+    helmet({
+        contentSecurityPolicy: false,
     })
 );
+
+// --- helmetの代替となるカスタムCSPミドルウェア ---
+// 問題を引き起こしていたCSPヘッダーの設定のみ、手動で行います。
+app.use((req, res, next) => {
+    res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; " +
+        "script-src 'self' https://cdn.jsdelivr.net; " +
+        "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
+        "img-src 'self' data: https:; " +
+        "connect-src 'self' https://script.google.com https://script.googleusercontent.com; " +
+        "font-src 'self' https://fonts.gstatic.com;"
+    );
+    next();
+});
 
 
 app.use(cors());
