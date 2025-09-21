@@ -12,7 +12,7 @@
 <div id="auth-container" class="min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
         <div id="login-form-container">
-            <form id="login-form" method="post">
+            <form id="login-form" method="post" action="/api/login">
                 <h2 class="text-2xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">ログイン</h2>
                 <div class="mb-4">
                     <label for="login-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ユーザー名</label>
@@ -27,7 +27,7 @@
             </form>
         </div>
         <div id="register-form-container" class="hidden">
-            <form id="register-form" method="post">
+            <form id="register-form" method="post" action="/api/register">
                 <h2 class="text-2xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">新規登録</h2>
                 <div class="mb-4">
                     <label for="register-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ユーザー名</label>
