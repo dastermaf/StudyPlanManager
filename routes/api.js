@@ -8,7 +8,7 @@ const { registerLimiter, loginLimiter } = require('../middleware/security');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
-// Новый маршрут: передача конфигурации на клиент
+// 新規ルート：設定情報をクライアントに渡す
 router.get('/config', (req, res) => {
     if (process.env.CMS_LINK) {
         res.json({ cms_link: process.env.CMS_LINK });
@@ -123,5 +123,6 @@ router.post('/progress', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'サーバーエラーが発生しました。' });
     }
 });
+
 
 module.exports = router;

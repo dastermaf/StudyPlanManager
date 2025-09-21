@@ -7,7 +7,7 @@ const pool = new Pool({
     }
 });
 
-// Функция для задержки
+// 遅延を発生させるための関数
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const initializeDatabase = async (retries = 5) => {
@@ -61,15 +61,16 @@ const initializeDatabase = async (retries = 5) => {
 
             client.release();
             console.log("LOG: db.js: データベースの初期化が正常に完了しました。");
-            return; // Успех, выходим из цикла
+            return; // 成功した場合はループと関数を終了
         } catch (error) {
+            // エラーコード '57P03' はデータベースがまだ起動中であることを意味します
             if (error.code === '57P03' && retries > 0) {
                 console.warn(`LOG: db.js: データベースの準備がまだできていません。残り試行回数: ${retries - 1}。5秒後に再試行します...`);
-                await wait(5000); // Ждем 5 секунд
+                await wait(5000); // 5秒待機
                 retries--;
             } else {
                 console.error('LOG: db.js: データベース初期化中に致命的なエラーが発生しました:', error);
-                throw error; // Другая ошибка, пробрасываем ее
+                throw error; // その他のエラー、または試行回数が尽きた場合はエラーをスロー
             }
         }
     }

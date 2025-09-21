@@ -1,14 +1,11 @@
 import { SUBJECTS } from './studyPlan.js';
 
-// --- Переменные модуля ---
 let SCRIPT_URL = null;
 let activeModalKey = null;
 let handleTaskChangeCallback = null;
 
-// Переменные для элементов DOM, будут определены в init
 let modalOverlay, modalContent, modalTitle, modalBody, taskVodCheckbox, taskTestCheckbox, noteTextarea, closeXButton;
 
-// --- Внутренние функции ---
 function log(message, ...details) {
     console.log(`[Modal LOG] ${message}`, ...details);
 }
@@ -108,8 +105,6 @@ async function fetchConfig() {
         SCRIPT_URL = null;
     }
 }
-
-// --- Экспортируемые функции ---
 
 export async function show(key, progressData) {
     activeModalKey = key;
