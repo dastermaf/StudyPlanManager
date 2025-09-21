@@ -19,12 +19,9 @@ const port = process.env.PORT || 3000;
 console.log("LOG: server.js: Запуск сервера...");
 app.set('trust proxy', 1);
 
-// ИЗМЕНЕНИЕ: Helmet теперь используется без отключения CSP,
-// т.к. основная политика будет задана в railway.toml
-app.use(helmet());
-
-// ИЗМЕНЕНИЕ: Удален блок app.use((req, res, next) => { ... }) с ручной установкой заголовка CSP,
-// чтобы избежать конфликтов с конфигурацией Railway.
+// --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+// HelmetのデフォルトCSPを無効にし、railway.tomlのCSP設定のみが使われるようにします。
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
