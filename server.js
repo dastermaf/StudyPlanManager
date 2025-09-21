@@ -21,11 +21,11 @@ app.use(
     helmet.contentSecurityPolicy({
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "https://cdn.jsdelivr.net"], // Разрешаем CDN для Chart.js
-            styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"], // Разрешаем инлайн-стили
+            scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "'unsafe-inline'"], // Добавляем 'unsafe-inline' для совместимости с расширениями
+            styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"], // Добавляем 'unsafe-inline'
             fontSrc: ["fonts.gstatic.com"],
             connectSrc: ["'self'", "https://script.google.com", "https://script.googleusercontent.com"],
-            imgSrc: ["'self'", "data:", "https:"], // Разрешаем картинки с любых https источников
+            imgSrc: ["'self'", "data:", "https:"],
             frameSrc: ["'self'"],
         },
     })

@@ -29,7 +29,12 @@ export function renderWeek(weekIndex, progressData) {
     const weekTitle = document.getElementById('week-title');
     const weekPeriod = document.getElementById('week-period');
 
-    if (!planContainer) return;
+    // Надежная проверка: если мы не на главной странице, ничего не делаем
+    if (!planContainer || !finalPrepContainer || !weekTitle || !weekPeriod) {
+        console.warn("UI: Элементы для рендеринга недели не найдены. Операция отменена.");
+        return;
+    }
+
     planContainer.innerHTML = '';
 
     const sortedSubjects = [...SUBJECTS].sort((a, b) => {
