@@ -1,6 +1,9 @@
 import { SUBJECTS } from './studyPlan.js';
+import * as api from './api.js'; // Импортируем API для сохранения прогресса
 
 let SCRIPT_URL = null;
+let progress = {};
+let saveTimeout;
 
 // --- Логирование ---
 function log(message, ...details) {
@@ -39,7 +42,6 @@ function renderContent(container, data) {
     for (const lessonTitle in data) {
         const lessonElement = document.createElement('section');
         lessonElement.className = 'bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8';
-
         let contentHtml = `<h2 class="text-2xl font-bold text-indigo-800 dark:text-indigo-300 mb-4">${lessonTitle}</h2><div class="space-y-3">`;
 
         data[lessonTitle].forEach(item => {
@@ -53,8 +55,7 @@ function renderContent(container, data) {
                 case 'image':
                     contentHtml += `<div><img src="${item.content_1}" alt="${item.content_2 || '教材画像'}" class="my-2 rounded-lg shadow-md max-w-full h-auto"></div>`;
                     break;
-                case 'link':
-                case 'video':
+                case 'link': case 'video':
                     const icon = item.type === 'video' ? '▶️' : '🔗';
                     contentHtml += `<a href="${item.content_1}" target="_blank" rel="noopener noreferrer" class="block p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">${icon} <span class="underline">${item.content_2 || item.content_1}</span></a>`;
                     break;
@@ -74,12 +75,65 @@ function renderError(container, message) {
     </div>`;
 }
 
+// --- Функции для работы с прогрессом ---
+function saveProgress() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async () => {
+        try {
+            await api.saveProgress(progress);
+            log("進捗がサーバーに保存されました。");
+        } catch (error) {
+            console.error('進捗の保存中にエラーが発生しました:', error);
+        }
+    }, 1000);
+}
+
+function setupProgressTracker(subjectId, chapterNo) {
+    const vodCheckbox = document.getElementById('task-vod');
+    const testCheckbox = document.getElementById('task-test');
+    const noteTextarea = document.getElementById('note-textarea');
+
+    if (!vodCheckbox || !testCheckbox || !noteTextarea) return;
+
+    // Инициализация
+    if (!progress.lectures) progress.lectures = {};
+    if (!progress.lectures[subjectId]) progress.lectures[subjectId] = {};
+    if (!progress.lectures[subjectId][chapterNo]) {
+        progress.lectures[subjectId][chapterNo] = { vod: false, test: false, note: '' };
+    }
+    const lectureProgress = progress.lectures[subjectId][chapterNo];
+
+    vodCheckbox.checked = lectureProgress.vod;
+    testCheckbox.checked = lectureProgress.test;
+    noteTextarea.value = lectureProgress.note;
+
+    // Обработчики событий
+    vodCheckbox.addEventListener('change', () => {
+        lectureProgress.vod = vodCheckbox.checked;
+        saveProgress();
+    });
+    testCheckbox.addEventListener('change', () => {
+        lectureProgress.test = testCheckbox.checked;
+        saveProgress();
+    });
+    noteTextarea.addEventListener('input', () => {
+        lectureProgress.note = noteTextarea.value;
+        saveProgress();
+    });
+}
+
 // --- Основная функция ---
 async function initialize() {
+    // 1. Проверяем, авторизован ли пользователь
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+        window.location.href = '/'; // Если нет, перенаправляем на логин
+        return;
+    }
+
     const titleElement = document.getElementById('materials-title');
     const container = document.getElementById('materials-container');
 
-    // Получаем ID предмета и главы из URL
     const pathParts = window.location.pathname.split('/').filter(p => p);
     if (pathParts.length < 3) {
         renderError(container, "URLが無効です。");
@@ -93,6 +147,16 @@ async function initialize() {
         titleElement.textContent = `${subject.name} - 第${chapterNo}章`;
     }
 
+    // 2. Загружаем весь прогресс пользователя
+    try {
+        progress = await api.getProgress();
+        setupProgressTracker(subjectId, chapterNo);
+    } catch (e) {
+        console.error("進捗データの読み込みに失敗しました:", e);
+    }
+
+
+    // 3. Загружаем материалы
     const url = await fetchConfig();
     if (!url) {
         renderError(container, "CMSの設定を読み込めませんでした。");
@@ -105,7 +169,7 @@ async function initialize() {
         const response = await fetch(requestUrl);
         if (!response.ok) throw new Error(`ネットワークエラー (ステータス: ${response.status})`);
         const data = await response.json();
-        if (data.error) throw new Error(`スクриプトエラー: ${data.details || data.error}`);
+        if (data.error) throw new Error(`スクリプトエラー: ${data.details || data.error}`);
 
         renderContent(container, data);
         log("コンテンツが正常に表示されました。");
