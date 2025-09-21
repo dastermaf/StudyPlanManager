@@ -1,28 +1,16 @@
 [build]
-# Railway автоматически определит команду сборки, если она нужна,
-# например, `npm run build:css`. Оставляем пустым для автоопределения.
 builder = "NIXPACKS"
 
 [deploy]
-# Команда запуска берется из package.json ("scripts": { "start": ... })
-# Указывать ее здесь необязательно, но для ясности оставим.
 startCommand = "npm start"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 
-# --- САМАЯ ВАЖНАЯ ЧАСТЬ ---
-# Единый и правильный набор заголовков безопасности для всего приложения.
 [http.headers]
-# Эта политика разрешает:
-# - Загрузку ресурсов (скрипты, стили, изображения) с самого сайта ('self').
-# - Загрузку скриптов с CDN (jsdelivr.net).
-# - Загрузку стилей со шрифтами Google (fonts.googleapis.com).
-# - Использование инлайн-стилей ('unsafe-inline'), что необходимо для работы некоторых UI-компонентов.
-# - Загрузку изображений с любых источников (data: https:).
-# - AJAX-запросы к самому сайту и к API Google Scripts.
-# - Загрузку шрифтов с Google Fonts (fonts.gstatic.com).
+# Эта политика разрешает все, что нужно вашему приложению, и ничего лишнего.
 "Content-Security-Policy" = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self' https://fonts.gstatic.com;"
+# Эти заголовки - стандартная хорошая практика для безопасности.
 "X-Frame-Options" = "DENY"
 "X-Content-Type-Options" = "nosniff"
-"Referrer-Policy" = "origin-when-cross-origin"
-"Strict-Transport-Security" = "max-age=31536000; includeSubDomains"
+# Этот заголовок важен, чтобы исправить ошибку с favicon.ico
+"Cross-Origin-Resource-Policy" = "same-site"

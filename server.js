@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const helmet = require('helmet');
+// const helmet = require('helmet'); // helmet больше не нужен
 const cookieParser = require('cookie-parser');
 const { initializeDatabase } = require('./db');
 const apiRoutes = require('./routes/api');
@@ -17,13 +17,9 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 console.log("ЛОГ: server.js: Запуск сервера...");
-// Доверяем прокси-серверу Railway
 app.set('trust proxy', 1);
 
-// --- ВАЖНОЕ ИЗМЕНЕНИЕ ---
-// Используем helmet, но отключаем его вмешательство в Content-Security-Policy.
-// Всеми заголовками CSP теперь будет управлять исключительно railway.toml.
-app.use(helmet({ contentSecurityPolicy: false }));
+// app.use(helmet()); // ПОЛНОСТЬЮ УДАЛИТЕ ИЛИ ЗАКОММЕНТИРУЙТЕ HELMET
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));

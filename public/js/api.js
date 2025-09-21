@@ -6,11 +6,21 @@ async function request(endpoint, options = {}) {
         ...options.headers,
     };
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+    // Добавляем эту опцию, чтобы браузер принудительно отправлял cookie
+    // с каждым запросом к API. Это решит проблему с аутентификацией.
+    const config = {
+        ...options,
+        headers,
+        credentials: 'include' // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+    };
+
+    const response = await fetch(`${API_URL}${endpoint}`, config);
 
     if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-            // Не перенаправляем здесь, пусть вызывающая функция решает, что делать
+            // Если сервер вернул ошибку авторизации, перенаправляем на главную
+            window.location.href = '/';
         }
         const errorData = await response.json().catch(() => ({ error: 'エラー応答の読み取りに失敗しました' }));
         throw new Error(errorData.error || `HTTPエラー！ステータス: ${response.status}`);
@@ -30,7 +40,6 @@ export function register(username, password, deviceId) {
     });
 }
 
-// ДОБАВЛЕНА НЕДОСТАЮЩАЯ ФУНКЦИЯ
 export function login(username, password) {
     return request('/api/login', {
         method: 'POST',
