@@ -2,11 +2,11 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
 const authenticateToken = (req, res, next) => {
-    const token = req.cookies.accessToken; // Cookieからトークンを読み込む
+    const token = req.cookies.accessToken;
 
     if (token == null) {
         console.log("LOG: authenticateToken: トークンが見つかりません。ログインページにリダイレクトします。");
-        return res.redirect('/'); // トークンがない場合はログインページへ
+        return res.redirect('/');
     }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {

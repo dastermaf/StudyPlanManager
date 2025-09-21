@@ -8,7 +8,6 @@ const { registerLimiter, loginLimiter } = require('../middleware/security');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
-// 新規ルート：設定情報をクライアントに渡す
 router.get('/config', (req, res) => {
     if (process.env.CMS_LINK) {
         res.json({ cms_link: process.env.CMS_LINK });
@@ -20,33 +19,25 @@ router.get('/config', (req, res) => {
 // Register
 router.post('/register', registerLimiter, async (req, res) => {
     const { username, password, deviceId } = req.body;
-    console.log(`LOG: /api/register: ユーザー '${username}' の登録リクエストを受信しました。`);
     try {
         if (!username || !password || !deviceId) {
-            console.log("LOG: /api/register: エラー - 全てのフィールドが入力されていません。");
             return res.status(400).json({ error: 'ユーザー名、パスワード、デバイスIDは必須です。' });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
             const deviceCheck = await client.query('SELECT * FROM device_registrations WHERE device_id = $1', [deviceId]);
             if (deviceCheck.rowCount > 0) {
                 await client.query('ROLLBACK');
-                console.log(`LOG: /api/register: 登録が拒否されました - deviceId '${deviceId}' はすでに存在します。`);
                 return res.status(403).json({ error: 'このデバイスからはすでにアカウントが登録されています。' });
             }
-
             const newUserRes = await client.query("INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username", [username, hashedPassword]);
             const newUser = newUserRes.rows[0];
-
             await client.query('INSERT INTO device_registrations (device_id, user_id) VALUES ($1, $2)', [deviceId, newUser.id]);
             const emptyProgress = { settings: { theme: 'light' }, lectures: {} };
             await client.query("INSERT INTO progress (user_id, data) VALUES ($1, $2)", [newUser.id, emptyProgress]);
-
             await client.query('COMMIT');
-            console.log(`LOG: /api/register: ユーザー '${username}' が正常に登録されました。`);
             res.status(201).json(newUser);
         } catch (e) {
             await client.query('ROLLBACK');
@@ -55,7 +46,6 @@ router.post('/register', registerLimiter, async (req, res) => {
             client.release();
         }
     } catch (error) {
-        console.error(`LOG: /api/register: ユーザー '${username}' の致命的なエラー:`, error);
         if (error.code === '23505') return res.status(409).json({ error: 'このユーザー名はすでに存在します。' });
         res.status(500).json({ error: 'サーバーエラーが発生しました。' });
     }
@@ -98,7 +88,6 @@ router.get('/user', authenticateToken, (req, res) => {
 
 // Progress GET
 router.get('/progress', authenticateToken, async (req, res) => {
-    console.log(`LOG: /api/progress (GET): ユーザー '${req.user.username}' からの進捗取得リクエスト。`);
     try {
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [req.user.id]);
         if (result.rows.length > 0) {
@@ -107,18 +96,15 @@ router.get('/progress', authenticateToken, async (req, res) => {
             res.json({ settings: { theme: 'light' }, lectures: {} });
         }
     } catch (error) {
-        console.error(`LOG: /api/progress (GET): ユーザー '${req.user.username}' の致命的なエラー:`, error);
         res.status(500).json({ error: 'サーバーエラーが発生しました。' });
     }
 });
 
 // Progress POST
 router.post('/progress', authenticateToken, async (req, res) => {
-    console.log(`LOG: /api/progress (POST): ユーザー '${req.user.username}' からの進捗保存リクエスト。`);
     try {
         const progressData = req.body;
         if (!progressData) {
-            console.log("LOG: /api/progress (POST): エラー - 保存するデータがありません。");
             return res.status(400).json({error: "保存するデータがありません。"});
         }
         await pool.query(
@@ -128,10 +114,8 @@ router.post('/progress', authenticateToken, async (req, res) => {
         );
         res.status(200).json({ success: true, message: '進捗が保存されました。' });
     } catch (error) {
-        console.error(`LOG: /api/progress (POST): ユーザー '${req.user.username}' の致命的なエラー:`, error);
         res.status(500).json({ error: 'サーバーエラーが発生しました。' });
     }
 });
-
 
 module.exports = router;

@@ -25,7 +25,6 @@ async function loadUserProgress() {
         if (!progress.lectures) progress.lectures = {};
     } catch (error) {
         console.error('進捗の読み込み中にエラーが発生しました:', error);
-        // Если загрузка прогресса не удалась, выходим из системы
         auth.logout();
     }
 }
@@ -53,17 +52,14 @@ function saveProgress() {
 async function initialize() {
     let user;
     try {
-        // Запрашиваем информацию о текущем пользователе с сервера
         user = await api.getCurrentUser();
     } catch (e) {
-        // Если не удалось получить пользователя (например, невалидный cookie), перенаправляем на страницу входа
         console.error("ユーザー情報の取得に失敗しました:", e);
         window.location.href = '/';
         return;
     }
 
     if (!user) {
-        // Если пользователь не определен, перенаправляем на страницу входа
         window.location.href = '/';
         return;
     }

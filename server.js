@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
-const cookieParser = require('cookie-parser'); // 追加
+const cookieParser = require('cookie-parser');
 const { initializeDatabase } = require('./db');
 const apiRoutes = require('./routes/api');
 const pageRoutes = require('./routes/pages');
@@ -32,8 +32,8 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true })); // フォームデータの解析用
-app.use(cookieParser()); // 追加
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', pageRoutes);
