@@ -1,7 +1,5 @@
 import { SUBJECTS, WEEKLY_NOTES } from './studyPlan.js';
 
-// Важно: Мы больше не импортируем modal.js
-
 export const WEEKS_COUNT = 15;
 
 const MOTIVATIONAL_QUOTES = [
@@ -13,10 +11,11 @@ const MOTIVATIONAL_QUOTES = [
     "「完了！」"
 ];
 
-function getLectureStatus(lectureProgress) {
-    if (!lectureProgress) return 'incomplete';
-    if (lectureProgress.vod && lectureProgress.test) return 'completed';
-    if (lectureProgress.vod || lectureProgress.test) return 'in-progress';
+function getChapterStatus(chapterProgress) {
+    if (!chapterProgress) return 'incomplete';
+    // Исправлено: проверяем именно свойство checked
+    if (chapterProgress.vod?.checked && chapterProgress.test?.checked) return 'completed';
+    if (chapterProgress.vod?.checked || chapterProgress.test?.checked) return 'in-progress';
     return 'incomplete';
 }
 
@@ -34,6 +33,17 @@ export function renderWeek(weekIndex, progressData) {
     if (!planContainer) return;
     planContainer.innerHTML = '';
 
+    // Логика закрепления: сортируем предметы так, чтобы закрепленные были первыми
+    const sortedSubjects = [...SUBJECTS].sort((a, b) => {
+        const progressA = progressData[a.id] || {};
+        const progressB = progressData[b.id] || {};
+        const isAPinned = Object.values(progressA).some(ch => ch.pinned);
+        const isBPinned = Object.values(progressB).some(ch => ch.pinned);
+        if (isAPinned && !isBPinned) return -1;
+        if (!isAPinned && isBPinned) return 1;
+        return 0;
+    });
+
     if (weekIndex >= WEEKS_COUNT) {
         planContainer.classList.add('hidden');
         finalPrepContainer.classList.remove('hidden');
@@ -49,23 +59,26 @@ export function renderWeek(weekIndex, progressData) {
         const endDate = new Date(2025, 8, 22 + weekIndex * 7 + 6);
         weekPeriod.textContent = `${startDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric'})}～${endDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric'})}`;
 
-        SUBJECTS.forEach((subject) => {
+        sortedSubjects.forEach((subject) => {
             const card = document.createElement('div');
             const hasImportantNote = WEEKLY_NOTES[currentWeek] && WEEKLY_NOTES[currentWeek][subject.name];
+            const isPinned = Object.values(progressData[subject.id] || {}).some(ch => ch.pinned);
+
             card.className = `bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between ${hasImportantNote ? 'border-2 border-yellow-400' : ''}`;
+
+            const pinIndicator = isPinned ? `<span title="ピン留めされた科目" class="text-yellow-500 ml-2">★</span>` : '';
 
             let lecturesHtml = '';
             for (let i = 1; i <= subject.totalLectures; i++) {
-                const key = `${subject.id}-${i}`;
-                const lectureProgress = progressData[subject.id]?.[i];
-                const status = getLectureStatus(lectureProgress);
+                const chapterProgress = progressData[subject.id]?.[i];
+                const status = getChapterStatus(chapterProgress);
                 const isRecommended = i === currentWeek;
 
                 let lectureClass = 'optional';
                 if (status === 'completed') lectureClass = 'completed';
                 else if (status === 'in-progress') lectureClass = 'in-progress';
                 else if (isRecommended) lectureClass = 'recommended';
-                // ИЗМЕНЕНИЕ: Оборачиваем в тег <a> для перехода
+
                 lecturesHtml += `<a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>`;
             }
 
@@ -73,7 +86,7 @@ export function renderWeek(weekIndex, progressData) {
 
             card.innerHTML = `
                 <div>
-                    <h3 class="font-bold text-lg text-indigo-800 dark:text-indigo-300">${subject.name}</h3>
+                    <h3 class="font-bold text-lg text-indigo-800 dark:text-indigo-300 flex items-center">${subject.name} ${pinIndicator}</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">総進捗 (完了した講義数)</p>
                     <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
                         <div id="progress-${subject.id}" class="progress-bar-fg h-2.5 rounded-full"></div>
@@ -103,12 +116,16 @@ export function updateWeeklyProgress(weekIndex, progressData) {
         let subjectCompleted = 0;
         const subjectProgressData = progressData[subject.id] || {};
         for (let i = 1; i <= subject.totalLectures; i++) {
-            if (getLectureStatus(subjectProgressData[i]) === 'completed') subjectCompleted++;
+            if (getChapterStatus(subjectProgressData[i]) === 'completed') {
+                subjectCompleted++;
+            }
         }
 
         if (currentWeek <= WEEKS_COUNT) {
             recommendedTotal++;
-            if (getLectureStatus(subjectProgressData[currentWeek]) === 'completed') recommendedCompleted++;
+            if (getChapterStatus(subjectProgressData[currentWeek]) === 'completed') {
+                recommendedCompleted++;
+            }
         }
 
         const subjectProgressBar = document.getElementById(`progress-${subject.id}`);
@@ -135,7 +152,7 @@ export function updateOverallProgress(progressData) {
     SUBJECTS.forEach(subject => {
         totalLectures += subject.totalLectures;
         const subjectProgress = progressData[subject.id] || {};
-        completedLectures += Object.values(subjectProgress).filter(l => l.vod && l.test).length;
+        completedLectures += Object.values(subjectProgress).filter(l => l.vod?.checked && l.test?.checked).length;
     });
 
     const percentage = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
