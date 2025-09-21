@@ -17,41 +17,10 @@ function handleWeekChange(direction) {
     }
 }
 
-async function initialize() {
-    auth.init(onLoginSuccess, onLogout);
-    theme.init(saveSettings);
-    ui.initNavigation(handleWeekChange);
-
-    // ИЗМЕНЕНИЕ: Используем sessionStorage
-    const token = sessionStorage.getItem('accessToken');
-    if (token) {
-        const user = auth.parseJwt(token);
-        if (user && (user.exp * 1000 > Date.now())) {
-            await onLoginSuccess(user.username);
-        } else {
-            onLogout();
-        }
-    } else {
-        if (window.location.pathname.startsWith('/app')) {
-            onLogout();
-        }
-    }
-}
-
-async function onLoginSuccess(username) {
-    ui.showMainContent(username);
-    await loadUserProgress();
-    theme.applyTheme(progress.settings?.theme || 'light');
-    currentWeekIndex = progress.settings?.currentWeekIndex || 0;
-    ui.renderWeek(currentWeekIndex, progress.lectures);
-    ui.updateOverallProgress(progress.lectures);
-}
-
 function onLogout() {
-    // ИЗМЕНЕНИЕ: Используем sessionStorage
     sessionStorage.removeItem('accessToken');
-    localStorage.removeItem('deviceId'); // deviceId можно оставить в localStorage
-    window.location.href = '/';
+    localStorage.removeItem('deviceId');
+    window.location.href = '/'; // Перенаправляем на страницу входа
 }
 
 async function loadUserProgress() {
@@ -69,6 +38,10 @@ async function loadUserProgress() {
 function saveSettings(key, value) {
     if (!progress.settings) progress.settings = {};
     progress.settings[key] = value;
+    // Сохраняем тему в localStorage для страницы входа
+    if (key === 'theme') {
+        localStorage.setItem('theme', value);
+    }
     saveProgress();
 }
 
@@ -81,6 +54,32 @@ function saveProgress() {
             console.error('進捗の保存中にエラーが発生しました:', error);
         }
     }, 1000);
+}
+
+async function initialize() {
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+        onLogout(); // Если токена нет, отправляем на логин
+        return;
+    }
+
+    const user = auth.parseJwt(token);
+    if (!user || (user.exp * 1000 < Date.now())) {
+        onLogout(); // Если токен невалиден, отправляем на логин
+        return;
+    }
+
+    // Если все в порядке, продолжаем инициализацию
+    auth.init(null, onLogout); // onLoginSuccess здесь не нужен
+    theme.init(saveSettings);
+    ui.initNavigation(handleWeekChange);
+
+    ui.showMainContent(user.username);
+    await loadUserProgress();
+    theme.applyTheme(progress.settings?.theme || 'light');
+    currentWeekIndex = progress.settings?.currentWeekIndex || 0;
+    ui.renderWeek(currentWeekIndex, progress.lectures);
+    ui.updateOverallProgress(progress.lectures);
 }
 
 document.addEventListener('DOMContentLoaded', initialize);

@@ -3,12 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>秋学期 学習計画管理サイト</title>
+    <title>学習計画管理サイト</title>
     <link rel="stylesheet" href="/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
-<div id="main-container" class="container mx-auto p-4 md:p-8 max-w-7xl flex flex-col min-h-screen">
+
+<div id="auth-container" class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
+        <div id="login-form-container">
+            <form id="login-form" method="post">
+                <h2 class="text-2xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">ログイン</h2>
+                <div class="mb-4">
+                    <label for="login-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ユーザー名</label>
+                    <input type="text" id="login-username" name="username" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label for="login-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">パスワード</label>
+                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">ログイン</button>
+                <p class="mt-4 text-center text-sm">アカウントをお持ちでないですか？ <a href="#" id="show-register" class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">新規登録</a></p>
+            </form>
+        </div>
+        <div id="register-form-container" class="hidden">
+            <form id="register-form" method="post">
+                <h2 class="text-2xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">新規登録</h2>
+                <div class="mb-4">
+                    <label for="register-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ユーザー名</label>
+                    <input type="text" id="register-username" name="username" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label for="register-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">パスワード</label>
+                    <input type="password" id="register-password" name="password" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">アカウント作成</button>
+                <p class="mt-4 text-center text-sm">すでにアカウントをお持ちですか？ <a href="#" id="show-login" class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">ログイン</a></p>
+            </form>
+        </div>
+        <footer class="text-center mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+                <p class="mb-2">
+                    <a href="https://github.com/dastermaf/StadyPlanManager" target="_blank" rel="noopener noreferrer" class="hover:underline">このサイトのメモ、パスワードは暗号化され、匿名化されています。</a>
+                </p>
+                <div class="flex justify-center space-x-4 mb-2">
+                    <a href="/about" target="_blank" class="hover:underline">サイトについて</a>
+                    <span>·</span>
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSesVOxCBVaoi2ao3kODLPbAyhXOnQBxNYQwuquVUWgNMEQ4Xw/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" class="hover:underline">お問い合わせフォーム</a>
+                </div>
+                <p>License: CC0 1.0 Universal</p>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<div id="main-container" class="hidden container mx-auto p-4 md:p-8 max-w-7xl flex-col min-h-screen">
     <div class="flex-grow">
         <header class="mb-6 flex justify-between items-center">
             <div>
@@ -38,6 +87,25 @@
         </div>
 
         <div class="sticky top-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 py-4 mb-6 rounded-lg">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <button id="prev-week" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"></button>
+                        <div class="text-center">
+                            <h2 id="week-title" class="text-xl font-bold text-indigo-700 dark:text-indigo-400"></h2>
+                            <p id="week-period" class="text-sm text-gray-500 dark:text-gray-400"></p>
+                        </div>
+                        <button id="next-week" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"></button>
+                    </div>
+                    <div class="w-full sm:w-1/3">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">今週の推奨講義の達成度</label>
+                        <div class="w-full progress-bar-bg rounded-full h-4">
+                            <div id="weekly-progress-bar" class="progress-bar-fg h-4 rounded-full text-xs text-white flex items-center justify-center"></div>
+                        </div>
+                        <p id="weekly-progress-text" class="text-right text-sm text-gray-600 dark:text-gray-400 mt-1">0%</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <main id="plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
@@ -48,6 +116,7 @@
     <footer class="text-center mt-12 py-6 border-t border-gray-200 dark:border-gray-700">
     </footer>
 </div>
+
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>
