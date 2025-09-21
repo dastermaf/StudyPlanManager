@@ -60,30 +60,30 @@ const initializeDatabase = async (retries = 5) => {
 
             await client.query(`
                 CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(50) UNIQUE NOT NULL,
+                                                     id SERIAL PRIMARY KEY,
+                                                     username VARCHAR(50) UNIQUE NOT NULL,
                     password VARCHAR(255) NOT NULL,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
+                                             );
             `);
 
             await client.query(`
                 CREATE TABLE IF NOT EXISTS device_registrations (
-                    id SERIAL PRIMARY KEY,
-                    device_id VARCHAR(255) UNIQUE NOT NULL,
+                                                                    id SERIAL PRIMARY KEY,
+                                                                    device_id VARCHAR(255) UNIQUE NOT NULL,
                     user_id INTEGER NOT NULL,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
+                                             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
             `);
 
             await client.query(`
-                 CREATE TABLE IF NOT EXISTS progress (
-                    user_id INTEGER PRIMARY KEY,
-                    data JSONB,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                );
+                CREATE TABLE IF NOT EXISTS progress (
+                                                        user_id INTEGER PRIMARY KEY,
+                                                        data JSONB,
+                                                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                    );
             `);
 
             await runDataMigration(client);

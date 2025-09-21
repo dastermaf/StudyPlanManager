@@ -17,12 +17,6 @@ function handleWeekChange(direction) {
     }
 }
 
-function onLogout() {
-    sessionStorage.removeItem('accessToken');
-    localStorage.removeItem('deviceId');
-    window.location.href = '/'; // Перенаправляем на страницу входа
-}
-
 async function loadUserProgress() {
     try {
         const data = await api.getProgress();
@@ -31,14 +25,13 @@ async function loadUserProgress() {
         if (!progress.lectures) progress.lectures = {};
     } catch (error) {
         console.error('進捗の読み込み中にエラーが発生しました:', error);
-        onLogout();
+        auth.logout();
     }
 }
 
 function saveSettings(key, value) {
     if (!progress.settings) progress.settings = {};
     progress.settings[key] = value;
-    // Сохраняем тему в localStorage для страницы входа
     if (key === 'theme') {
         localStorage.setItem('theme', value);
     }
@@ -57,20 +50,13 @@ function saveProgress() {
 }
 
 async function initialize() {
-    const token = sessionStorage.getItem('accessToken');
-    if (!token) {
-        onLogout(); // Если токена нет, отправляем на логин
+    const user = auth.getUser();
+    if (!user) {
+        auth.logout();
         return;
     }
 
-    const user = auth.parseJwt(token);
-    if (!user || (user.exp * 1000 < Date.now())) {
-        onLogout(); // Если токен невалиден, отправляем на логин
-        return;
-    }
-
-    // Если все в порядке, продолжаем инициализацию
-    auth.init(null, onLogout); // onLoginSuccess здесь не нужен
+    document.getElementById('logout-button')?.addEventListener('click', auth.logout);
     theme.init(saveSettings);
     ui.initNavigation(handleWeekChange);
 
