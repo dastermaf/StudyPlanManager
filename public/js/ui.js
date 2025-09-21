@@ -1,231 +1,201 @@
-import { courseData } from './courseData.js';
+import { SUBJECTS, WEEKLY_NOTES, WEEKS_COUNT } from './studyPlan.js';
 
-let dashboardChart = null;
+let activeModalKey = null;
+let handleTaskChangeCallback = null;
 
-export function showAuthContent() {
-    const authContainer = document.getElementById('auth-container');
-    const mainContainer = document.getElementById('main-container');
-
-    // ИСПРАВЛЕНИЕ: Проверяем, существует ли элемент, перед изменением класса
-    if (authContainer) authContainer.classList.remove('hidden');
-    if (mainContainer) mainContainer.classList.add('hidden');
+function getLectureStatus(lectureProgress) {
+    if (!lectureProgress) return 'incomplete';
+    if (lectureProgress.vod && lectureProgress.test) return 'completed';
+    if (lectureProgress.vod || lectureProgress.test) return 'in-progress';
+    return 'incomplete';
 }
 
 export function showMainContent(username) {
-    const authContainer = document.getElementById('auth-container');
-    const mainContainer = document.getElementById('main-container');
     const usernameDisplay = document.getElementById('username-display');
-
-    // ИСПРАВЛЕНИЕ: Проверяем, существует ли элемент, перед изменением класса
-    if (authContainer) authContainer.classList.add('hidden');
-    if (mainContainer) mainContainer.classList.remove('hidden');
-    if (usernameDisplay) usernameDisplay.textContent = username;
+    if (usernameDisplay) usernameDisplay.textContent = `ようこそ、${username}さん`;
 }
 
-export function renderUI(progress, onLectureClick, onNoteChange) {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) return; // Выходим, если не на главной странице
-    mainContent.innerHTML = ''; // Очищаем содержимое перед рендерингом
-
-    // Добавляем контейнер для дашборда
-    const dashboardElement = document.createElement('div');
-    dashboardElement.className = 'bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8';
-    dashboardElement.innerHTML = `
-        <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">Общий прогресс</h2>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
-            <div id="overall-progress-bar" class="bg-indigo-600 h-4 rounded-full transition-all duration-500" style="width: 0%;"></div>
-        </div>
-        <p id="overall-progress-text" class="text-right font-bold text-lg text-indigo-600 dark:text-indigo-400">0%</p>
-        <div class="mt-6 h-64 md:h-80 relative">
-            <canvas id="progress-chart"></canvas>
-        </div>
-    `;
-    mainContent.appendChild(dashboardElement);
-
-
-    Object.keys(courseData).forEach(courseId => {
-        const course = courseData[courseId];
-        const courseProgress = progress.lectures?.[courseId] || {};
-
-        const courseElement = document.createElement('div');
-        courseElement.className = 'bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6'; // Добавлен mb-6
-        courseElement.innerHTML = `
-            <h3 class="text-xl font-bold mb-2 text-gray-800 dark:text-gray-200">${course.name}</h3>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
-                <div id="progress-${courseId}" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
-            </div>
-            <div id="lectures-${courseId}" class="grid grid-cols-5 sm:grid-cols-10 lg:grid-cols-15 gap-2"></div>
-        `;
-        mainContent.appendChild(courseElement);
-
-        const lecturesContainer = document.getElementById(`lectures-${courseId}`);
-        for (let i = 1; i <= course.lectures; i++) {
-            const lectureState = courseProgress[i] || { vod: false, test: false, note: '' };
-            const lectureButton = document.createElement('button');
-            lectureButton.className = `lecture-btn p-2 rounded text-white font-bold transition-colors duration-300 w-10 h-10 flex items-center justify-center`;
-            lectureButton.textContent = i;
-            lectureButton.dataset.courseId = courseId;
-            lectureButton.dataset.lectureId = i;
-
-            lectureButton.addEventListener('click', () => showLectureModal(courseId, i, lectureState, onLectureClick, onNoteChange));
-
-            lecturesContainer.appendChild(lectureButton);
-            updateLectureState(courseId, i, lectureState);
+export function renderWeek(weekIndex, progressData, onLectureClick, onNoteChange) {
+    handleTaskChangeCallback = (type, value) => {
+        if (!activeModalKey) return;
+        const [subjectId, lectureId] = activeModalKey.split('-');
+        if (type === 'task') {
+            onLectureClick(subjectId, lectureId, value);
+        } else if (type === 'note') {
+            onNoteChange(subjectId, lectureId, value);
         }
-        updateCourseProgress(courseId, courseProgress);
-    });
-    updateDashboard(progress.lectures);
-}
-
-function showLectureModal(courseId, lectureId, lectureState, onLectureClick, onNoteChange) {
-    const course = courseData[courseId];
-    const modal = document.getElementById('lecture-modal');
-    document.getElementById('modal-title').textContent = `${course.name} - 第${lectureId}回`;
-
-    const vodCheckbox = document.getElementById('vod-checkbox');
-    const testCheckbox = document.getElementById('test-checkbox');
-    const noteTextarea = document.getElementById('note-textarea');
-
-    vodCheckbox.checked = lectureState.vod;
-    testCheckbox.checked = lectureState.test;
-    noteTextarea.value = lectureState.note || '';
-
-    // Удаляем старые обработчики, чтобы избежать дублирования
-    vodCheckbox.onchange = null;
-    testCheckbox.onchange = null;
-    noteTextarea.oninput = null;
-
-    const handleVodChange = () => onLectureClick(courseId, lectureId, 'vod');
-    const handleTestChange = () => onLectureClick(courseId, lectureId, 'test');
-
-    let noteTimeout;
-    const handleNoteInput = (e) => {
-        clearTimeout(noteTimeout);
-        noteTimeout = setTimeout(() => {
-            onNoteChange(courseId, lectureId, e.target.value);
-        }, 500);
     };
 
-    vodCheckbox.onchange = handleVodChange;
-    testCheckbox.onchange = handleTestChange;
-    noteTextarea.oninput = handleNoteInput;
+    const planContainer = document.getElementById('plan-container');
+    const finalPrepContainer = document.getElementById('final-prep-container');
+    const weekTitle = document.getElementById('week-title');
+    const weekPeriod = document.getElementById('week-period');
 
-    const closeModal = () => {
-        modal.classList.add('hidden');
-    };
+    if (!planContainer || !finalPrepContainer || !weekTitle || !weekPeriod) return;
 
-    document.getElementById('close-modal-btn').onclick = closeModal;
-    modal.onclick = (e) => {
-        if (e.target === modal) closeModal();
-    };
+    planContainer.innerHTML = '';
 
-    modal.classList.remove('hidden');
-}
-
-
-export function updateLectureState(courseId, lectureId, lectureState) {
-    const lectureButton = document.querySelector(`[data-course-id="${courseId}"][data-lecture-id="${lectureId}"]`);
-    if (!lectureButton) return;
-
-    const { vod, test } = lectureState;
-    let colorClasses = '';
-    if (vod && test) {
-        colorClasses = 'bg-green-600 hover:bg-green-700';
-    } else if (vod || test) {
-        colorClasses = 'bg-yellow-500 hover:bg-yellow-600';
-    } else {
-        colorClasses = 'bg-gray-500 hover:bg-gray-600';
-    }
-    // Заменяем только классы цвета, сохраняя остальные
-    lectureButton.className = lectureButton.className.replace(/bg-\S+/g, '').replace(/hover:bg-\S+/g, '') + ' ' + colorClasses;
-}
-
-export function updateCourseProgress(courseId, courseProgress) {
-    const course = courseData[courseId];
-    const progressBar = document.getElementById(`progress-${courseId}`);
-    if (!progressBar) return;
-
-    const completed = Object.values(courseProgress).filter(l => l.vod && l.test).length;
-    const percentage = (completed / course.lectures) * 100;
-    progressBar.style.width = `${percentage}%`;
-}
-
-
-export function updateDashboard(allLecturesProgress) {
-    const overallProgressBar = document.getElementById('overall-progress-bar');
-    const overallProgressText = document.getElementById('overall-progress-text');
-    const chartCtx = document.getElementById('progress-chart')?.getContext('2d');
-
-    if (!overallProgressBar || !overallProgressText || !chartCtx) {
-        console.warn("LOG: ui.js: Элементы дашборда не найдены, обновление отменено.");
+    if (weekIndex >= WEEKS_COUNT) {
+        planContainer.classList.add('hidden');
+        finalPrepContainer.classList.remove('hidden');
+        weekTitle.textContent = '最終準備期間';
+        weekPeriod.textContent = '1/5～2/1';
         return;
     }
 
-    const totalLectures = Object.values(courseData).reduce((sum, course) => sum + course.lectures, 0);
-    let completedLectures = 0;
-    let partiallyCompletedLectures = 0;
+    planContainer.classList.remove('hidden');
+    finalPrepContainer.classList.add('hidden');
 
-    if (allLecturesProgress) {
-        Object.values(allLecturesProgress).forEach(course => {
-            Object.values(course).forEach(lecture => {
-                if (lecture.vod && lecture.test) {
-                    completedLectures++;
-                } else if (lecture.vod || lecture.test) {
-                    partiallyCompletedLectures++;
-                }
-            });
-        });
-    }
+    const currentWeek = weekIndex + 1;
+    weekTitle.textContent = `第 ${currentWeek} 週`;
+    const startDate = new Date(2025, 8, 22 + weekIndex * 7);
+    const endDate = new Date(2025, 8, 22 + weekIndex * 7 + 6);
+    weekPeriod.textContent = `${startDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric'})}～${endDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric'})}`;
 
-    const uncompletedLectures = totalLectures - completedLectures - partiallyCompletedLectures;
+    SUBJECTS.forEach((subject) => {
+        const card = document.createElement('div');
+        const hasImportantNote = WEEKLY_NOTES[currentWeek] && WEEKLY_NOTES[currentWeek][subject.name];
+        card.className = `bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between transition-transform transform hover:scale-105 ${hasImportantNote ? 'border-2 border-yellow-400' : ''}`;
 
-    const percentage = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
-    overallProgressBar.style.width = `${percentage}%`;
-    overallProgressText.textContent = `${percentage.toFixed(1)}%`;
+        let lecturesHtml = '';
+        for (let i = 1; i <= subject.totalLectures; i++) {
+            const key = `${subject.id}-${i}`;
+            const lectureProgress = progressData[subject.id]?.[i];
+            const status = getLectureStatus(lectureProgress);
+            const isRecommended = i === currentWeek;
 
+            let lectureClass = 'optional';
+            if (status === 'completed') lectureClass = 'completed';
+            else if (status === 'in-progress') lectureClass = 'in-progress';
+            else if (isRecommended) lectureClass = 'recommended';
 
-    if(dashboardChart) {
-        dashboardChart.destroy();
-    }
+            lecturesHtml += `<div class="lecture-box ${lectureClass}" data-key="${key}">${i}</div>`;
+        }
 
-    dashboardChart = new Chart(chartCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['完了', '進行中', '未完了'],
-            datasets: [{
-                data: [completedLectures, partiallyCompletedLectures, uncompletedLectures],
-                backgroundColor: [
-                    '#16a34a', // green-600
-                    '#f59e0b', // amber-500
-                    '#6b7280'  // gray-500
-                ],
-                borderColor: document.body.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '70%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: document.body.classList.contains('dark') ? '#d1d5db' : '#374151',
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                tooltip: {
-                    bodyFont: {
-                        size: 14
-                    },
-                    titleFont: {
-                        size: 16
-                    }
-                }
+        let noteHtml = hasImportantNote ? `<div class="important-note border-l-4 p-3 mt-4 text-sm rounded-r-lg"><p>${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
+
+        card.innerHTML = `
+            <div>
+                <h3 class="font-bold text-lg text-indigo-800 dark:text-indigo-300">${subject.name}</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">総進捗 (完了した講義数)</p>
+                <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
+                    <div id="progress-${subject.id}" class="progress-bar-fg h-2.5 rounded-full"></div>
+                </div>
+                <div class="lecture-grid">${lecturesHtml}</div>
+                ${noteHtml}
+            </div>
+        `;
+        planContainer.appendChild(card);
+    });
+
+    document.querySelectorAll('.lecture-box').forEach(box => {
+        box.addEventListener('click', () => showModal(box.dataset.key, progressData));
+    });
+
+    updateProgress(weekIndex, progressData);
+}
+
+export function updateProgress(weekIndex, progressData) {
+    const weeklyProgressBar = document.getElementById('weekly-progress-bar');
+    const weeklyProgressText = document.getElementById('weekly-progress-text');
+    if (!weeklyProgressBar || !weeklyProgressText) return;
+
+    const currentWeek = weekIndex + 1;
+    let recommendedTotal = 0;
+    let recommendedCompleted = 0;
+
+    SUBJECTS.forEach((subject) => {
+        let subjectCompleted = 0;
+        const subjectProgressData = progressData[subject.id] || {};
+        for (let i = 1; i <= subject.totalLectures; i++) {
+            const status = getLectureStatus(subjectProgressData[i]);
+            if (status === 'completed') {
+                subjectCompleted++;
             }
         }
+
+        if (currentWeek <= WEEKS_COUNT) {
+            recommendedTotal++;
+            const recommendedStatus = getLectureStatus(subjectProgressData[currentWeek]);
+            if (recommendedStatus === 'completed') {
+                recommendedCompleted++;
+            }
+        }
+
+        const subjectProgressBar = document.getElementById(`progress-${subject.id}`);
+        const subjectProgress = subject.totalLectures > 0 ? (subjectCompleted / subject.totalLectures) * 100 : 0;
+        if(subjectProgressBar) {
+            subjectProgressBar.style.width = `${subjectProgress}%`;
+        }
+    });
+
+    const weeklyProgress = recommendedTotal > 0 ? (recommendedCompleted / recommendedTotal) * 100 : 0;
+    weeklyProgressBar.style.width = `${weeklyProgress}%`;
+    weeklyProgressBar.textContent = `${Math.round(weeklyProgress)}%`;
+    weeklyProgressText.textContent = `${Math.round(weeklyProgress)}%`;
+}
+
+
+function showModal(key, progressData) {
+    activeModalKey = key;
+    const [subjectId, lectureId] = key.split('-');
+    const subject = SUBJECTS.find(s => s.id === subjectId);
+    if (!subject) return;
+
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalContent = document.getElementById('modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const taskVodCheckbox = document.getElementById('task-vod');
+    const taskTestCheckbox = document.getElementById('task-test');
+    const noteTextarea = document.getElementById('note-textarea');
+
+    modalTitle.textContent = `${subject.name} - 第${lectureId}回`;
+
+    const lectureProgress = progressData[subjectId]?.[lectureId] || { vod: false, test: false, note: '' };
+    taskVodCheckbox.checked = lectureProgress.vod;
+    taskTestCheckbox.checked = lectureProgress.test;
+    noteTextarea.value = lectureProgress.note || '';
+
+    modalOverlay.classList.remove('hidden');
+    modalContent.classList.remove('hidden');
+    setTimeout(() => {
+        modalOverlay.classList.remove('opacity-0');
+        modalContent.classList.remove('opacity-0', 'scale-95');
+    }, 10);
+}
+
+function closeModal() {
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalContent = document.getElementById('modal-content');
+    modalOverlay.classList.add('opacity-0');
+    modalContent.classList.add('opacity-0', 'scale-95');
+    setTimeout(() => {
+        modalOverlay.classList.add('hidden');
+        modalContent.classList.add('hidden');
+        activeModalKey = null;
+    }, 300);
+}
+
+export function initModal() {
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalCloseBtn = document.getElementById('modal-close');
+    const taskVodCheckbox = document.getElementById('task-vod');
+    const taskTestCheckbox = document.getElementById('task-test');
+    const noteTextarea = document.getElementById('note-textarea');
+
+    if (!modalOverlay || !modalCloseBtn) return;
+
+    modalOverlay.addEventListener('click', closeModal);
+    modalCloseBtn.addEventListener('click', closeModal);
+
+    taskVodCheckbox.addEventListener('change', () => handleTaskChangeCallback('task', 'vod'));
+    taskTestCheckbox.addEventListener('change', () => handleTaskChangeCallback('task', 'test'));
+
+    let noteTimeout;
+    noteTextarea.addEventListener('input', (e) => {
+        clearTimeout(noteTimeout);
+        noteTimeout = setTimeout(() => {
+            handleTaskChangeCallback('note', e.target.value);
+        }, 500);
     });
 }

@@ -2,99 +2,82 @@ import * as api from './api.js';
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
-
-console.log("LOG: app.js модуль загружен.");
+import { WEEKS_COUNT } from './studyPlan.js';
 
 let progress = {};
+let currentWeekIndex = 0;
+let saveTimeout;
 
 async function initialize() {
-    console.log("LOG: app.js: initialize() вызвана.");
-    // ИСПРАВЛЕНИЕ: Передаем функцию onLogout, которая будет перенаправлять на главную
     auth.init(onLoginSuccess, onLogout);
     theme.init(saveSettings);
+    ui.initModal();
 
     const token = localStorage.getItem('accessToken');
     if (token) {
-        console.log("LOG: app.js: Найден токен в localStorage.");
         const user = auth.parseJwt(token);
-        if (user && (user.exp * 1000 > Date.now())) { // Проверяем, что токен не истек
-            console.log("LOG: app.js: Токен валиден, пользователь:", user.username);
-            onLoginSuccess(user.username);
+        if (user && (user.exp * 1000 > Date.now())) {
+            await onLoginSuccess(user.username);
         } else {
-            console.log("LOG: app.js: Токен невалиден или истек.");
-            onLogout(); // Выходим, если токен недействителен
-        }
-    } else {
-        console.log("LOG: app.js: Токен в localStorage не найден.");
-        // Если токена нет, а мы не на странице входа, перенаправляем
-        if (window.location.pathname !== '/' && window.location.pathname !== '/layout/login.html') {
             onLogout();
         }
+    } else {
+        onLogout();
     }
+    setupNavButtons();
 }
 
 async function onLoginSuccess(username) {
-    console.log(`LOG: app.js: onLoginSuccess() вызвана для пользователя ${username}.`);
-    // Проверяем, что мы на главной странице приложения перед тем как рендерить UI
-    if (document.getElementById('main-container')) {
-        ui.showMainContent(username);
-        await loadUserProgress();
-        if (progress.settings) {
-            theme.applyTheme(progress.settings.theme || 'light');
-        }
-    }
+    ui.showMainContent(username);
+    await loadUserProgress();
+    theme.applyTheme(progress.settings?.theme || 'light');
+    currentWeekIndex = progress.settings?.currentWeekIndex || 0;
+    ui.renderWeek(currentWeekIndex, progress.lectures, handleLectureClick, handleNoteChange);
+    updateNavButtons();
 }
 
 function onLogout() {
-    console.log("LOG: app.js: onLogout() вызвана. Очистка localStorage и перенаправление на /");
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('deviceId');
-    progress = {};
-    // ИСПРАВЛЕНИЕ: Перенаправляем на страницу входа
-    window.location.href = '/';
+    if (window.location.pathname.startsWith('/app')) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('deviceId');
+        window.location.href = '/';
+    }
 }
-
 
 async function loadUserProgress() {
-    console.log("LOG: app.js: loadUserProgress() - Запрашиваем прогресс пользователя.");
     try {
         const data = await api.getProgress();
-        progress = data || { settings: { theme: 'light' }, lectures: {} };
-        if (!progress.settings) progress.settings = { theme: 'light' };
+        progress = data || { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
+        if (!progress.settings) progress.settings = { theme: 'light', currentWeekIndex: 0 };
         if (!progress.lectures) progress.lectures = {};
-        ui.renderUI(progress, handleLectureClick, handleNoteChange);
     } catch (error) {
-        console.error('LOG: app.js: ОШИБКА при загрузке прогресса:', error);
-        onLogout(); // Выходим, если не можем загрузить данные
+        console.error('Ошибка при загрузке прогресса:', error);
+        onLogout();
     }
 }
 
-function handleLectureClick(courseId, lectureId, task) {
-    const lecture = progress.lectures[courseId]?.[lectureId] || { vod: false, test: false, note: '' };
+function handleLectureClick(subjectId, lectureId, task) {
+    if (!progress.lectures[subjectId]) {
+        progress.lectures[subjectId] = {};
+    }
+    if (!progress.lectures[subjectId][lectureId]) {
+        progress.lectures[subjectId][lectureId] = { vod: false, test: false, note: '' };
+    }
+    const lecture = progress.lectures[subjectId][lectureId];
     lecture[task] = !lecture[task];
 
-    if (!progress.lectures[courseId]) {
-        progress.lectures[courseId] = {};
-    }
-    progress.lectures[courseId][lectureId] = lecture;
-
-    ui.updateLectureState(courseId, lectureId, lecture);
-    ui.updateCourseProgress(courseId, progress.lectures[courseId]);
-    // Проверяем наличие элемента перед обновлением
-    if (document.getElementById('progress-chart')) {
-        ui.updateDashboard(progress.lectures);
-    }
     saveProgress();
+    ui.updateProgress(currentWeekIndex, progress.lectures);
 }
 
-function handleNoteChange(courseId, lectureId, note) {
-    if (!progress.lectures[courseId]) {
-        progress.lectures[courseId] = {};
+function handleNoteChange(subjectId, lectureId, note) {
+    if (!progress.lectures[subjectId]) {
+        progress.lectures[subjectId] = {};
     }
-    if (!progress.lectures[courseId][lectureId]) {
-        progress.lectures[courseId][lectureId] = { vod: false, test: false, note: '' };
+    if (!progress.lectures[subjectId][lectureId]) {
+        progress.lectures[subjectId][lectureId] = { vod: false, test: false, note: '' };
     }
-    progress.lectures[courseId][lectureId].note = note;
+    progress.lectures[subjectId][lectureId].note = note;
     saveProgress();
 }
 
@@ -106,16 +89,53 @@ function saveSettings(key, value) {
     saveProgress();
 }
 
-let saveTimeout;
 function saveProgress() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
         try {
             await api.saveProgress(progress);
+            console.log("Прогресс сохранен.");
         } catch (error) {
-            console.error('LOG: app.js: ОШИБКА при сохранении прогресса:', error);
+            console.error('Ошибка при сохранении прогресса:', error);
         }
     }, 1000);
 }
+
+function setupNavButtons() {
+    const prevWeekBtn = document.getElementById('prev-week');
+    const nextWeekBtn = document.getElementById('next-week');
+
+    if (prevWeekBtn) {
+        prevWeekBtn.addEventListener('click', () => {
+            if (currentWeekIndex > 0) {
+                currentWeekIndex--;
+                progress.settings.currentWeekIndex = currentWeekIndex;
+                saveProgress();
+                ui.renderWeek(currentWeekIndex, progress.lectures, handleLectureClick, handleNoteChange);
+                updateNavButtons();
+            }
+        });
+    }
+
+    if (nextWeekBtn) {
+        nextWeekBtn.addEventListener('click', () => {
+            if (currentWeekIndex < WEEKS_COUNT) {
+                currentWeekIndex++;
+                progress.settings.currentWeekIndex = currentWeekIndex;
+                saveProgress();
+                ui.renderWeek(currentWeekIndex, progress.lectures, handleLectureClick, handleNoteChange);
+                updateNavButtons();
+            }
+        });
+    }
+}
+
+function updateNavButtons() {
+    const prevWeekBtn = document.getElementById('prev-week');
+    const nextWeekBtn = document.getElementById('next-week');
+    if(prevWeekBtn) prevWeekBtn.disabled = currentWeekIndex === 0;
+    if(nextWeekBtn) nextWeekBtn.disabled = currentWeekIndex >= WEEKS_COUNT;
+}
+
 
 document.addEventListener('DOMContentLoaded', initialize);
