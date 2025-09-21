@@ -8,20 +8,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
+
 <div id="main-container" class="container mx-auto p-4 md:p-8 max-w-7xl">
-    <header class="mb-8 flex justify-between items-center">
+    <header class="mb-6 flex justify-between items-center">
         <div>
             <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">2025年度秋学期 学習計画</h1>
             <p id="username-display" class="text-gray-600 dark:text-gray-400 mt-2"></p>
         </div>
         <div class="flex items-center space-x-4">
-            <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
-            </button>
+            <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"></button>
             <button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                 ログアウト
             </button>
         </div>
     </header>
+
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md mb-6">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">学習全体の達成度</h2>
+        <div class="flex items-center gap-4">
+            <div class="w-full progress-bar-bg rounded-full h-5 shadow-inner">
+                <div id="overall-progress-bar" class="progress-bar-fg h-5 rounded-full flex items-center justify-center text-sm font-bold text-green-900"></div>
+            </div>
+            <span id="overall-progress-text" class="font-bold text-lg text-indigo-700 dark:text-indigo-400 w-20 text-right">0.0%</span>
+        </div>
+        <p id="motivational-quote" class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3"></p>
+    </div>
+
 
     <div class="sticky top-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 py-4 mb-6 rounded-lg">
         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
@@ -49,8 +61,7 @@
         </div>
     </div>
 
-    <main id="plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    </main>
+    <main id="plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
 
     <div id="final-prep-container" class="hidden mt-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-2xl font-bold text-center text-indigo-700 dark:text-indigo-400 mb-4">最終準備期間 📖</h2>
