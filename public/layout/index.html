@@ -34,7 +34,6 @@
         <p id="motivational-quote" class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3"></p>
     </div>
 
-
     <div class="sticky top-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 py-4 mb-6 rounded-lg">
         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -95,23 +94,34 @@
     </div>
 </div>
 
-<div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0"></div>
-<div id="modal-content" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-11/12 max-w-md z-50 hidden opacity-0 scale-95">
-    <h3 id="modal-title" class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4"></h3>
-    <div class="space-y-4">
-        <label for="task-vod" class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-            <input type="checkbox" id="task-vod" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-            <span class="ml-3 font-medium text-gray-700 dark:text-gray-200">VOD視聴</span>
-        </label>
-        <label for="task-test" class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-            <input type="checkbox" id="task-test" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-            <span class="ml-3 font-medium text-gray-700 dark:text-gray-200">評価に加えるテスト</span>
-        </label>
-        <textarea id="note-textarea" rows="4" class="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600" placeholder="個人用メモ..."></textarea>
+<div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 z-40 hidden opacity-0"></div>
+<div id="modal-content" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-11/12 max-w-2xl z-50 hidden opacity-0 scale-95 flex flex-col" style="max-height: 90vh;">
+    <div class="flex justify-between items-center mb-4">
+        <h3 id="modal-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100"></h3>
+        <button id="modal-close-x" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
     </div>
-    <button id="modal-close" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">閉じる</button>
-</div>
 
+    <div id="modal-body" class="overflow-y-auto pr-2">
+    </div>
+
+    <div id="modal-footer" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col md:flex-row gap-4">
+            <div class="space-y-3 flex-grow">
+                <label for="task-vod" class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                    <input type="checkbox" id="task-vod" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <span class="ml-3 font-medium text-gray-700 dark:text-gray-200">VOD視聴</span>
+                </label>
+                <label for="task-test" class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                    <input type="checkbox" id="task-test" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <span class="ml-3 font-medium text-gray-700 dark:text-gray-200">評価に加えるテスト</span>
+                </label>
+            </div>
+            <div class="flex-grow">
+                <textarea id="note-textarea" rows="5" class="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600" placeholder="個人用メモ..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
 <script type="module" src="../js/app.js"></script>
 </body>
 </html>

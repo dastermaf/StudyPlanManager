@@ -104,12 +104,6 @@ function closeModal() {
 // --- 公開関数 ---
 
 export async function show(key, progressData) {
-    // --- ДИАГНОСТИКА ---
-    console.log("--- HTML SNAPSHOT AT THE MOMENT OF MODAL SHOW ---");
-    console.log(document.body.innerHTML);
-    console.log("--- END OF SNAPSHOT ---");
-    // --- КОНЕЦ ДИАГНОСТИКИ ---
-
     const modalOverlay = document.getElementById('modal-overlay');
     const modalContent = document.getElementById('modal-content');
     const modalTitle = document.getElementById('modal-title');
