@@ -1,35 +1,18 @@
 import { SUBJECTS } from './studyPlan.js';
 
+// --- モジュール変数 ---
 let SCRIPT_URL = null;
 let activeModalKey = null;
 let handleTaskChangeCallback = null;
 
-let modalOverlay, modalContent, modalTitle, modalBody, taskVodCheckbox, taskTestCheckbox, noteTextarea, closeXButton;
-
+// --- 内部関数 ---
 function log(message, ...details) {
     console.log(`[Modal LOG] ${message}`, ...details);
 }
 
-function openModal() {
-    modalOverlay.classList.remove('hidden');
-    modalContent.classList.remove('hidden');
-    setTimeout(() => {
-        modalOverlay.classList.remove('opacity-0');
-        modalContent.classList.remove('opacity-0', 'scale-95');
-    }, 10);
-}
-
-function closeModal() {
-    modalOverlay.classList.add('opacity-0');
-    modalContent.classList.add('opacity-0', 'scale-95');
-    setTimeout(() => {
-        modalOverlay.classList.add('hidden');
-        modalContent.classList.add('hidden');
-        activeModalKey = null;
-    }, 300);
-}
-
 function renderModalContent(data) {
+    const modalBody = document.getElementById('modal-body');
+    if (!modalBody) return; // 安全のためのチェック
     modalBody.innerHTML = '';
 
     if (Object.keys(data).length === 0) {
@@ -80,6 +63,8 @@ function renderModalContent(data) {
 }
 
 function renderError(message) {
+    const modalBody = document.getElementById('modal-body');
+    if (!modalBody) return; // 安全のためのチェック
     modalBody.innerHTML = `<div class="text-center p-8 text-red-500 dark:text-red-400">
         <h4 class="font-bold text-lg mb-2">教材の読み込みに失敗しました。</h4>
         <p class="text-sm">${message}</p>
@@ -90,9 +75,7 @@ function renderError(message) {
 async function fetchConfig() {
     try {
         const response = await fetch('/api/config');
-        if (!response.ok) {
-            throw new Error('サーバーから設定を取得できませんでした。');
-        }
+        if (!response.ok) throw new Error('サーバーから設定を取得できませんでした。');
         const config = await response.json();
         if (config.cms_link) {
             SCRIPT_URL = config.cms_link;
@@ -106,7 +89,23 @@ async function fetchConfig() {
     }
 }
 
+// --- 公開関数 ---
+
 export async function show(key, progressData) {
+    // 修正：関数が呼び出されるたびにDOM要素を確実に取得する
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalContent = document.getElementById('modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const taskVodCheckbox = document.getElementById('task-vod');
+    const taskTestCheckbox = document.getElementById('task-test');
+    const noteTextarea = document.getElementById('note-textarea');
+
+    if (!modalOverlay || !modalContent || !modalTitle || !modalBody) {
+        console.error("致命的なエラー: モーダル要素がDOMに見つかりません。");
+        return;
+    }
+
     activeModalKey = key;
     const [subjectId, lectureId] = key.split('-');
     const subject = SUBJECTS.find(s => s.id === subjectId);
@@ -124,32 +123,28 @@ export async function show(key, progressData) {
     taskTestCheckbox.checked = lectureProgress.test;
     noteTextarea.value = lectureProgress.note || '';
 
-    openModal();
+    modalOverlay.classList.remove('hidden');
+    modalContent.classList.remove('hidden');
+    setTimeout(() => {
+        modalOverlay.classList.remove('opacity-0');
+        modalContent.classList.remove('opacity-0', 'scale-95');
+    }, 10);
 
     try {
-        if (!SCRIPT_URL) {
-            await fetchConfig();
-            if (!SCRIPT_URL) {
-                throw new Error("サーバーからCMS設定を取得できませんでした。");
-            }
-        }
+        if (!SCRIPT_URL) await fetchConfig();
+        if (!SCRIPT_URL) throw new Error("サーバーからCMS設定を取得できませんでした。");
 
         const requestUrl = `${SCRIPT_URL}?subject=${subjectId}&chapter=${lectureId}`;
         log(`リクエストを送信します: ${requestUrl}`);
-
         const response = await fetch(requestUrl);
         log(`ステータス ${response.status} の応答を受信しました。`);
 
-        if (!response.ok) {
-            throw new Error(`ネットワークまたはスクリプトサーバーのエラー（ステータス: ${response.status}）。`);
-        }
+        if (!response.ok) throw new Error(`ネットワークまたはスクリプトサーバーのエラー（ステータス: ${response.status}）。`);
 
         const data = await response.json();
         log("応答は正常にJSONとして解析されました:", data);
 
-        if (data.error) {
-            throw new Error(`Apps Scriptからのエラー: ${data.details || data.error}`);
-        }
+        if (data.error) throw new Error(`Apps Scriptからのエラー: ${data.details || data.error}`);
 
         renderModalContent(data);
         log("コンテンツが正常に表示されました。");
@@ -160,25 +155,37 @@ export async function show(key, progressData) {
     }
 }
 
-export async function init(onTaskChange) {
-    modalOverlay = document.getElementById('modal-overlay');
-    modalContent = document.getElementById('modal-content');
-    modalTitle = document.getElementById('modal-title');
-    modalBody = document.getElementById('modal-body');
-    taskVodCheckbox = document.getElementById('task-vod');
-    taskTestCheckbox = document.getElementById('task-test');
-    noteTextarea = document.getElementById('note-textarea');
-    closeXButton = document.getElementById('modal-close-x');
+function closeModal() {
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalContent = document.getElementById('modal-content');
+    if (!modalOverlay || !modalContent) return;
 
+    modalOverlay.classList.add('opacity-0');
+    modalContent.classList.add('opacity-0', 'scale-95');
+    setTimeout(() => {
+        modalOverlay.classList.add('hidden');
+        modalContent.classList.add('hidden');
+        activeModalKey = null;
+    }, 300);
+}
+
+export async function init(onTaskChange) {
     handleTaskChangeCallback = onTaskChange;
 
-    await fetchConfig();
+    // イベントリスナーを一度だけ設定する
+    const modalOverlay = document.getElementById('modal-overlay');
+    const closeXButton = document.getElementById('modal-close-x');
+    const taskVodCheckbox = document.getElementById('task-vod');
+    const taskTestCheckbox = document.getElementById('task-test');
+    const noteTextarea = document.getElementById('note-textarea');
 
     modalOverlay?.addEventListener('click', closeModal);
     closeXButton?.addEventListener('click', closeModal);
+
     taskVodCheckbox?.addEventListener('change', () => {
         if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'vod');
     });
+
     taskTestCheckbox?.addEventListener('change', () => {
         if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'test');
     });
@@ -190,4 +197,7 @@ export async function init(onTaskChange) {
             if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'note', e.target.value);
         }, 500);
     });
+
+    // アプリケーションの起動時に一度だけ設定を読み込む
+    await fetchConfig();
 }
