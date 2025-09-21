@@ -9,22 +9,21 @@ const pool = new Pool({
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- Функция миграции данных ---
-// Эта функция будет проверять и обновлять структуру данных пользователя
+// --- データ移行機能 ---
+// ユーザーデータの構造を確認・更新する関数
 const runDataMigration = async (client) => {
-    console.log('LOG: db.js: Запуск проверки миграции данных...');
+    console.log('LOG: db.js: データ移行チェックを開始します...');
     const res = await client.query("SELECT user_id, data FROM progress");
 
     for (const row of res.rows) {
         const { user_id, data } = row;
         let needsUpdate = false;
 
-        // Проверяем, есть ли у пользователя лекции
         if (data.lectures) {
             for (const subjectKey in data.lectures) {
                 for (const chapterKey in data.lectures[subjectKey]) {
                     const chapterData = data.lectures[subjectKey][chapterKey];
-                    // Проверяем, что это старый формат (например, vod: true/false, а не объект)
+                    // 古いフォーマット（例：vodがオブジェクトではなくboolean）であるかを確認
                     if (typeof chapterData.vod !== 'object' || chapterData.vod === null) {
                         needsUpdate = true;
 
@@ -38,8 +37,8 @@ const runDataMigration = async (client) => {
                                 timestamp: chapterData.test ? new Date().toISOString() : null
                             },
                             note: chapterData.note || '',
-                            tasks: chapterData.tasks || []
-                            // pinned для уроков будет храниться на клиенте, в данных CMS
+                            tasks: chapterData.tasks || [],
+                            pinned: chapterData.pinned || false // ピン留めフィールドを追加
                         };
                         data.lectures[subjectKey][chapterKey] = newChapterData;
                     }
@@ -48,11 +47,11 @@ const runDataMigration = async (client) => {
         }
 
         if (needsUpdate) {
-            console.log(`LOG: db.js: Обновление данных для пользователя ${user_id}`);
+            console.log(`LOG: db.js: ユーザー ${user_id} のデータを更新しています...`);
             await client.query("UPDATE progress SET data = $1 WHERE user_id = $2", [data, user_id]);
         }
     }
-    console.log('LOG: db.js: Проверка миграции данных завершена.');
+    console.log('LOG: db.js: データ移行チェックが完了しました。');
 };
 
 
@@ -63,12 +62,34 @@ const initializeDatabase = async (retries = 5) => {
             const client = await pool.connect();
             console.log("LOG: db.js: データベースへの接続に成功しました。");
 
-            // ... (создание таблиц без изменений)
-            await client.query(`CREATE TABLE IF NOT EXISTS users (...)`);
-            await client.query(`CREATE TABLE IF NOT EXISTS device_registrations (...)`);
-            await client.query(`CREATE TABLE IF NOT EXISTS progress (...)`);
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
 
-            // Запускаем миграцию после инициализации таблиц
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS device_registrations (
+                    id SERIAL PRIMARY KEY,
+                    device_id VARCHAR(255) UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+            `);
+
+            await client.query(`
+                 CREATE TABLE IF NOT EXISTS progress (
+                    user_id INTEGER PRIMARY KEY,
+                    data JSONB,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                );
+            `);
+
             await runDataMigration(client);
 
             client.release();

@@ -18,8 +18,8 @@
             </div>
             <div class="flex items-center space-x-4">
                 <h1 id="materials-title" class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">読み込み中...</h1>
-                <button id="pin-chapter-btn" title="この章をピン留めする" class="text-gray-400 hover:text-yellow-500 transition-colors">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M... (путь иконки) ..."></path></svg>
+                <button id="pin-chapter-btn" title="この章をピン留め/ピン留め解除する" class="text-gray-400 hover:text-yellow-500 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5v14h14V5H5zM12 2l-2.5 5.5L4 9l5 4-2 6 5-3.5L17 19l-2-6 5-4-5.5-1.5L12 2z"></path></svg>
                 </button>
             </div>
             <p class="text-gray-600 dark:text-gray-400 mt-2">この章で集めた教材一覧です。</p>
@@ -33,17 +33,23 @@
             <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">進捗とタスク</h2>
             <div class="flex flex-col md:flex-row gap-6">
                 <div class="flex-grow md:w-1/2 space-y-3">
-                    <label class="..."><input type="checkbox" id="task-vod" ...><span>VOD視聴</span></label>
-                    <label class="..."><input type="checkbox" id="task-test" ...><span>評価に加えるテスト</span></label>
-                    <textarea id="note-textarea" rows="5" ... placeholder="この章に関する個人用メモ..."></textarea>
+                    <label class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                        <input type="checkbox" id="task-vod" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="ml-3 font-medium text-gray-700 dark:text-gray-200">VOD視聴</span>
+                    </label>
+                    <label class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                        <input type="checkbox" id="task-test" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="ml-3 font-medium text-gray-700 dark:text-gray-200">評価に加えるテスト</span>
+                    </label>
+                    <textarea id="note-textarea" rows="5" class="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600" placeholder="この章に関する個人用メモ..."></textarea>
                 </div>
                 <div class="flex-grow md:w-1/2">
                     <h3 class="font-bold text-lg mb-2 dark:text-gray-200">個人タスクリスト</h3>
                     <div id="todo-list" class="space-y-2 mb-3 max-h-48 overflow-y-auto pr-2">
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" id="new-task-input" class="... w-full" placeholder="新しいタスクを追加...">
-                        <button id="add-task-btn" class="bg-indigo-500 ...">追加</button>
+                        <input type="text" id="new-task-input" class="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600" placeholder="新しいタスクを追加...">
+                        <button id="add-task-btn" class="bg-indigo-500 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-600">追加</button>
                     </div>
                 </div>
             </div>
@@ -51,6 +57,17 @@
     </div>
 
     <footer class="text-center mt-12 py-6 border-t border-gray-200 dark:border-gray-700">
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="mb-2">
+                <a href="https://github.com/dastermaf/StadyPlanManager" target="_blank" rel="noopener noreferrer" class="hover:underline">このサイトのメモ、パスワードは暗号化され、匿名化されています。</a>
+            </p>
+            <div class="flex justify-center space-x-4 mb-2">
+                <a href="/about" target="_blank" class="hover:underline">サイトについて</a>
+                <span>·</span>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSesVOxCBVaoi2ao3kODLPbAyhXOnQBxNYQwuquVUWgNMEQ4Xw/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" class="hover:underline">お問い合わせフォーム</a>
+            </div>
+            <p>License: CC0 1.0 Universal</p>
+        </div>
     </footer>
 </div>
 
