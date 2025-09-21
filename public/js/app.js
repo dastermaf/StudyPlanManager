@@ -3,8 +3,6 @@ import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
 
-// modal.js больше не импортируется
-
 let progress = {};
 let currentWeekIndex = 0;
 let saveTimeout;
@@ -19,15 +17,13 @@ function handleWeekChange(direction) {
     }
 }
 
-// handleModalUpdate больше не нужен
-
 async function initialize() {
     auth.init(onLoginSuccess, onLogout);
     theme.init(saveSettings);
     ui.initNavigation(handleWeekChange);
-    // modal.init больше не вызывается
 
-    const token = localStorage.getItem('accessToken');
+    // ИЗМЕНЕНИЕ: Используем sessionStorage
+    const token = sessionStorage.getItem('accessToken');
     if (token) {
         const user = auth.parseJwt(token);
         if (user && (user.exp * 1000 > Date.now())) {
@@ -52,8 +48,9 @@ async function onLoginSuccess(username) {
 }
 
 function onLogout() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('deviceId');
+    // ИЗМЕНЕНИЕ: Используем sessionStorage
+    sessionStorage.removeItem('accessToken');
+    localStorage.removeItem('deviceId'); // deviceId можно оставить в localStorage
     window.location.href = '/';
 }
 
@@ -68,10 +65,6 @@ async function loadUserProgress() {
         onLogout();
     }
 }
-
-// Функции handleLectureClick и handleNoteChange больше не нужны в этом файле,
-// так как прогресс теперь отмечается на странице материалов.
-// Но мы оставим их на случай, если Вы захотите добавить чекбоксы прямо в главный экран.
 
 function saveSettings(key, value) {
     if (!progress.settings) progress.settings = {};

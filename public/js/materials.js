@@ -1,6 +1,6 @@
 import { SUBJECTS } from './studyPlan.js';
 import * as api from './api.js';
-import * as theme from './theme.js'; // Импортируем модуль темы
+import * as theme from './theme.js';
 
 let SCRIPT_URL = null;
 let progress = {};
@@ -124,7 +124,8 @@ function setupProgressTracker(subjectId, chapterNo) {
 }
 
 async function initialize() {
-    const token = localStorage.getItem('accessToken');
+    // ИЗМЕНЕНИЕ: Используем sessionStorage
+    const token = sessionStorage.getItem('accessToken');
     if (!token) {
         window.location.href = '/';
         return;
@@ -149,7 +150,6 @@ async function initialize() {
     try {
         progress = await api.getProgress();
         setupProgressTracker(subjectId, chapterNo);
-        // Применяем и инициализируем тему
         theme.applyTheme(progress.settings?.theme || 'light');
         theme.init(saveSettings);
     } catch (e) {

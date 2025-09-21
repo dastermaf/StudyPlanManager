@@ -29,12 +29,9 @@ export function init(onLogin, onLogout) {
     const loginContainer = document.getElementById('login-form-container');
     const registerContainer = document.getElementById('register-form-container');
 
-    // --- ИСПРАВЛЕНИЕ: Добавляем проверки на существование элементов ---
-
     if (showRegisterLink && loginContainer && registerContainer) {
         showRegisterLink.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log("LOG: auth.js: Клик по ссылке 'Зарегистрироваться'.");
             loginContainer.classList.add('hidden');
             registerContainer.classList.remove('hidden');
         });
@@ -43,7 +40,6 @@ export function init(onLogin, onLogout) {
     if (showLoginLink && registerContainer && loginContainer) {
         showLoginLink.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log("LOG: auth.js: Клик по ссылке 'Войти'.");
             registerContainer.classList.add('hidden');
             loginContainer.classList.remove('hidden');
         });
@@ -52,8 +48,6 @@ export function init(onLogin, onLogout) {
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log("LOG: auth.js: Форма регистрации отправлена.");
-            // ИСПРАВЛЕНИЕ: Получаем значения по имени из коллекции elements
             const username = e.target.elements.username.value;
             const password = e.target.elements.password.value;
             const deviceId = getDeviceId();
@@ -76,14 +70,13 @@ export function init(onLogin, onLogout) {
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log("LOG: auth.js: Форма входа отправлена.");
-            // ИСПРАВЛЕНИЕ: Получаем значения по имени из коллекции elements
             const username = e.target.elements.username.value;
             const password = e.target.elements.password.value;
             try {
                 const data = await api.login(username, password);
                 console.log("LOG: auth.js: Успешный вход, получен токен.");
-                localStorage.setItem('accessToken', data.accessToken);
+                // ИЗМЕНЕНИЕ: Используем sessionStorage
+                sessionStorage.setItem('accessToken', data.accessToken);
                 onLoginCallback(username);
             } catch (error) {
                 console.error(`LOG: auth.js: Ошибка входа:`, error);
@@ -95,13 +88,11 @@ export function init(onLogin, onLogout) {
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log("LOG: auth.js: Кнопка выхода нажата.");
             logout();
         });
     }
 
     window.addEventListener('logout', () => {
-        console.log("LOG: auth.js: Получено глобальное событие 'logout'.");
         logout();
     });
 }
@@ -123,4 +114,3 @@ export function parseJwt(token) {
         return null;
     }
 }
-

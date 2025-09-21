@@ -4,7 +4,8 @@ console.log("LOG: api.js модуль загружен.");
 
 async function request(endpoint, options = {}) {
     console.log(`LOG: api.js: Отправка запроса на ${endpoint}`, options.body ? `с телом: ${options.body}` : '');
-    const token = localStorage.getItem('accessToken');
+    // ИЗМЕНЕНИЕ: Используем sessionStorage
+    const token = sessionStorage.getItem('accessToken');
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -65,4 +66,3 @@ export function saveProgress(progress) {
         body: JSON.stringify(progress),
     });
 }
-

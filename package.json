@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:css": "tailwindcss -i ./public/input.css -o ./public/style.css"
+    "build:css": "tailwindcss -i ./public/input.css -o ./public/style.css",
+    "audit": "npm audit --audit-level=high"
   },
   "author": "",
   "license": "ISC",
@@ -14,6 +15,7 @@
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3"
   },
