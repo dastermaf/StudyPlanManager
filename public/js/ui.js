@@ -1,5 +1,5 @@
 import { courseData } from './courseData.js';
-import Chart from 'https://cdn.jsdelivr.net/npm/chart.js';
+// ВАЖНО: Удалена некорректная строка "import Chart from '...';"
 
 let dashboardChart = null;
 
@@ -150,6 +150,7 @@ export function updateDashboard(allLecturesProgress) {
         dashboardChart.destroy();
     }
 
+    // Используем глобальный объект Chart, который доступен благодаря тегу <script> в index.html
     dashboardChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -183,4 +184,3 @@ export function updateDashboard(allLecturesProgress) {
         }
     });
 }
-
