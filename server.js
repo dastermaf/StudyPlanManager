@@ -19,16 +19,12 @@ const port = process.env.PORT || 3000;
 console.log("LOG: server.js: Запуск сервера...");
 app.set('trust proxy', 1);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+// ИЗМЕНЕНИЕ: Helmet теперь используется без отключения CSP,
+// т.к. основная политика будет задана в railway.toml
+app.use(helmet());
 
-// カスタムCSPミドルウェア
-app.use((req, res, next) => {
-    res.setHeader(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self' https://fonts.gstatic.com;"
-    );
-    next();
-});
+// ИЗМЕНЕНИЕ: Удален блок app.use((req, res, next) => { ... }) с ручной установкой заголовка CSP,
+// чтобы избежать конфликтов с конфигурацией Railway.
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));

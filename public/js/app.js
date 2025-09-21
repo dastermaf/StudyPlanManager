@@ -18,15 +18,11 @@ function handleWeekChange(direction) {
 }
 
 async function loadUserProgress() {
-    try {
-        const data = await api.getProgress();
-        progress = data || { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
-        if (!progress.settings) progress.settings = { theme: 'light', currentWeekIndex: 0 };
-        if (!progress.lectures) progress.lectures = {};
-    } catch (error) {
-        console.error('進捗の読み込み中にエラーが発生しました:', error);
-        auth.logout();
-    }
+    // Эта функция теперь просто загружает данные, обработка ошибок вынесена выше.
+    const data = await api.getProgress();
+    progress = data || { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
+    if (!progress.settings) progress.settings = { theme: 'light', currentWeekIndex: 0 };
+    if (!progress.lectures) progress.lectures = {};
 }
 
 function saveSettings(key, value) {
@@ -45,35 +41,42 @@ function saveProgress() {
             await api.saveProgress(progress);
         } catch (error) {
             console.error('進捗の保存中にエラーが発生しました:', error);
+            // Здесь можно показать пользователю уведомление, что сохранить не удалось
         }
     }, 1000);
 }
 
+// --- ИЗМЕНЕНА ВСЯ ФУНКЦИЯ INITIALIZE ---
 async function initialize() {
-    let user;
     try {
-        user = await api.getCurrentUser();
+        // 1. Сначала проверяем, есть ли активная сессия
+        const user = await api.getCurrentUser();
+        if (!user) {
+            // Если сессии нет, немедленно перенаправляем на страницу входа
+            window.location.href = '/';
+            return;
+        }
+
+        // 2. Если пользователь есть, загружаем его прогресс
+        await loadUserProgress();
+
+        // 3. Только после успешной загрузки всего, настраиваем и отрисовываем интерфейс
+        document.getElementById('logout-button')?.addEventListener('click', auth.logout);
+        theme.init(saveSettings);
+        ui.initNavigation(handleWeekChange);
+
+        ui.showMainContent(user.username);
+        theme.applyTheme(progress.settings?.theme || 'light');
+        currentWeekIndex = progress.settings?.currentWeekIndex || 0;
+        ui.renderWeek(currentWeekIndex, progress.lectures);
+        ui.updateOverallProgress(progress.lectures);
+
     } catch (e) {
-        console.error("ユーザー情報の取得に失敗しました:", e);
+        // Если на любом из этапов (проверка юзера, загрузка прогресса) произошла ошибка,
+        // это значит, что сессия недействительна. Перенаправляем на страницу входа.
+        console.error("初期化中に致命的なエラーが発生しました:", e);
         window.location.href = '/';
-        return;
     }
-
-    if (!user) {
-        window.location.href = '/';
-        return;
-    }
-
-    document.getElementById('logout-button')?.addEventListener('click', auth.logout);
-    theme.init(saveSettings);
-    ui.initNavigation(handleWeekChange);
-
-    ui.showMainContent(user.username);
-    await loadUserProgress();
-    theme.applyTheme(progress.settings?.theme || 'light');
-    currentWeekIndex = progress.settings?.currentWeekIndex || 0;
-    ui.renderWeek(currentWeekIndex, progress.lectures);
-    ui.updateOverallProgress(progress.lectures);
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
