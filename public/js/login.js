@@ -1,6 +1,5 @@
 import * as api from './api.js';
 import * as theme from './theme.js';
-import * as auth from './auth.js';
 
 function getDeviceId() {
     let deviceId = localStorage.getItem('deviceId');
@@ -12,20 +11,12 @@ function getDeviceId() {
 }
 
 function initialize() {
-    api.getCurrentUser().then(user => {
-        if (user) {
-            window.location.href = '/app';
-        }
-    }).catch(() => {
-        // Not logged in, stay on the page.
-    });
-
     const savedTheme = localStorage.getItem('theme') || 'light';
     theme.applyTheme(savedTheme);
     theme.init(() => {});
 
-    const registerForm = document.getElementById('register-form');
     const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
     const showRegisterLink = document.getElementById('show-register');
     const showLoginLink = document.getElementById('show-login');
     const loginContainer = document.getElementById('login-form-container');
@@ -43,34 +34,30 @@ function initialize() {
         loginContainer.classList.remove('hidden');
     });
 
-    registerForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = e.target.elements.username.value;
-        const password = e.target.elements.password.value;
-        try {
-            await api.register(username, password, getDeviceId());
-            alert('登録が成功しました！ログインしてください。');
-            e.target.reset();
-            registerContainer.classList.add('hidden');
-            loginContainer.classList.remove('hidden');
-        } catch (error) {
-            alert(`登録エラー: ${error.message}`);
-        }
-    });
-
     loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = e.target.elements.username.value;
         const password = e.target.elements.password.value;
         try {
             await api.login(username, password);
-            // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-            // sessionStorageは不要なため削除。成功したらすぐにページを移動します。
-            window.location.href = '/app';
+            window.location.href = '/app'; // Перенаправляем на главную страницу
         } catch (error) {
-            alert(`ログインエラー: ${error.message}`);
+            alert(`Ошибка входа: ${error.message}`);
+        }
+    });
+
+    registerForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = e.target.elements.username.value;
+        const password = e.target.elements.password.value;
+        try {
+            await api.register(username, password, getDeviceId());
+            alert('Регистрация прошла успешно! Пожалуйста, войдите.');
+            e.target.reset();
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
+        } catch (error) {
+            alert(`Ошибка входа: ${error.message}`);
         }
     });
 }
-
-document.addEventListener('DOMContentLoaded', initialize);

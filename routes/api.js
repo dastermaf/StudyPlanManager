@@ -16,7 +16,6 @@ router.get('/config', (req, res) => {
     }
 });
 
-// Register
 router.post('/register', registerLimiter, async (req, res) => {
     const { username, password, deviceId } = req.body;
     try {
@@ -51,7 +50,6 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 });
 
-// Login (ИЗМЕНЕНО: Возвращает JSON вместо редиректа)
 router.post('/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -67,7 +65,7 @@ router.post('/login', loginLimiter, async (req, res) => {
                 secure: process.env.NODE_ENV === 'production',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
             });
-            res.json({ success: true, message: 'ログインに成功しました。' }); // <--- ИЗМЕНЕНИЕ ЗДЕСЬ
+            res.json({ success: true, message: 'ログインに成功しました。' });
         } else {
             res.status(401).json({ error: "ユーザー名またはパスワードが正しくありません。" });
         }
@@ -76,17 +74,14 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 });
 
-// Logout
 router.post('/logout', (req, res) => {
     res.clearCookie('accessToken').sendStatus(200);
 });
 
-// Get Current User
 router.get('/user', authenticateToken, (req, res) => {
     res.json(req.user);
 });
 
-// Progress GET
 router.get('/progress', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [req.user.id]);
@@ -100,7 +95,6 @@ router.get('/progress', authenticateToken, async (req, res) => {
     }
 });
 
-// Progress POST
 router.post('/progress', authenticateToken, async (req, res) => {
     try {
         const progressData = req.body;

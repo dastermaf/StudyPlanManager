@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-// helmet полностью удален
 const cookieParser = require('cookie-parser');
 const { initializeDatabase } = require('./db');
 const apiRoutes = require('./routes/api');
