@@ -1,18 +1,16 @@
 import { SUBJECTS } from './studyPlan.js';
 
-// --- モジュール変数 ---
 let SCRIPT_URL = null;
 let activeModalKey = null;
 let handleTaskChangeCallback = null;
 
-// --- 内部関数 ---
 function log(message, ...details) {
     console.log(`[Modal LOG] ${message}`, ...details);
 }
 
 function renderModalContent(data) {
     const modalBody = document.getElementById('modal-body');
-    if (!modalBody) return; // 安全のためのチェック
+    if (!modalBody) return;
     modalBody.innerHTML = '';
 
     if (Object.keys(data).length === 0) {
@@ -64,7 +62,7 @@ function renderModalContent(data) {
 
 function renderError(message) {
     const modalBody = document.getElementById('modal-body');
-    if (!modalBody) return; // 安全のためのチェック
+    if (!modalBody) return;
     modalBody.innerHTML = `<div class="text-center p-8 text-red-500 dark:text-red-400">
         <h4 class="font-bold text-lg mb-2">教材の読み込みに失敗しました。</h4>
         <p class="text-sm">${message}</p>
@@ -89,10 +87,23 @@ async function fetchConfig() {
     }
 }
 
+function closeModal() {
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalContent = document.getElementById('modal-content');
+    if (!modalOverlay || !modalContent) return;
+
+    modalOverlay.classList.add('opacity-0');
+    modalContent.classList.add('opacity-0', 'scale-95');
+    setTimeout(() => {
+        modalOverlay.classList.add('hidden');
+        modalContent.classList.add('hidden');
+        activeModalKey = null;
+    }, 300);
+}
+
 // --- 公開関数 ---
 
 export async function show(key, progressData) {
-    // 修正：関数が呼び出されるたびにDOM要素を確実に取得する
     const modalOverlay = document.getElementById('modal-overlay');
     const modalContent = document.getElementById('modal-content');
     const modalTitle = document.getElementById('modal-title');
@@ -155,24 +166,9 @@ export async function show(key, progressData) {
     }
 }
 
-function closeModal() {
-    const modalOverlay = document.getElementById('modal-overlay');
-    const modalContent = document.getElementById('modal-content');
-    if (!modalOverlay || !modalContent) return;
-
-    modalOverlay.classList.add('opacity-0');
-    modalContent.classList.add('opacity-0', 'scale-95');
-    setTimeout(() => {
-        modalOverlay.classList.add('hidden');
-        modalContent.classList.add('hidden');
-        activeModalKey = null;
-    }, 300);
-}
-
 export async function init(onTaskChange) {
     handleTaskChangeCallback = onTaskChange;
 
-    // イベントリスナーを一度だけ設定する
     const modalOverlay = document.getElementById('modal-overlay');
     const closeXButton = document.getElementById('modal-close-x');
     const taskVodCheckbox = document.getElementById('task-vod');
@@ -198,6 +194,5 @@ export async function init(onTaskChange) {
         }, 500);
     });
 
-    // アプリケーションの起動時に一度だけ設定を読み込む
     await fetchConfig();
 }
