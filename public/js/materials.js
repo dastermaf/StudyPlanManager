@@ -1,16 +1,15 @@
 import { SUBJECTS } from './studyPlan.js';
-import * as api from './api.js'; // Импортируем API для сохранения прогресса
+import * as api from './api.js';
+import * as theme from './theme.js'; // Импортируем модуль темы
 
 let SCRIPT_URL = null;
 let progress = {};
 let saveTimeout;
 
-// --- Логирование ---
 function log(message, ...details) {
     console.log(`[Materials LOG] ${message}`, ...details);
 }
 
-// --- Получение конфигурации ---
 async function fetchConfig() {
     if (SCRIPT_URL) return SCRIPT_URL;
     try {
@@ -30,7 +29,6 @@ async function fetchConfig() {
     }
 }
 
-// --- Рендеринг контента ---
 function renderContent(container, data) {
     container.innerHTML = '';
 
@@ -75,7 +73,6 @@ function renderError(container, message) {
     </div>`;
 }
 
-// --- Функции для работы с прогрессом ---
 function saveProgress() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
@@ -88,6 +85,12 @@ function saveProgress() {
     }, 1000);
 }
 
+function saveSettings(key, value) {
+    if (!progress.settings) progress.settings = {};
+    progress.settings[key] = value;
+    saveProgress();
+}
+
 function setupProgressTracker(subjectId, chapterNo) {
     const vodCheckbox = document.getElementById('task-vod');
     const testCheckbox = document.getElementById('task-test');
@@ -95,7 +98,6 @@ function setupProgressTracker(subjectId, chapterNo) {
 
     if (!vodCheckbox || !testCheckbox || !noteTextarea) return;
 
-    // Инициализация
     if (!progress.lectures) progress.lectures = {};
     if (!progress.lectures[subjectId]) progress.lectures[subjectId] = {};
     if (!progress.lectures[subjectId][chapterNo]) {
@@ -107,7 +109,6 @@ function setupProgressTracker(subjectId, chapterNo) {
     testCheckbox.checked = lectureProgress.test;
     noteTextarea.value = lectureProgress.note;
 
-    // Обработчики событий
     vodCheckbox.addEventListener('change', () => {
         lectureProgress.vod = vodCheckbox.checked;
         saveProgress();
@@ -122,12 +123,10 @@ function setupProgressTracker(subjectId, chapterNo) {
     });
 }
 
-// --- Основная функция ---
 async function initialize() {
-    // 1. Проверяем, авторизован ли пользователь
     const token = localStorage.getItem('accessToken');
     if (!token) {
-        window.location.href = '/'; // Если нет, перенаправляем на логин
+        window.location.href = '/';
         return;
     }
 
@@ -147,16 +146,16 @@ async function initialize() {
         titleElement.textContent = `${subject.name} - 第${chapterNo}章`;
     }
 
-    // 2. Загружаем весь прогресс пользователя
     try {
         progress = await api.getProgress();
         setupProgressTracker(subjectId, chapterNo);
+        // Применяем и инициализируем тему
+        theme.applyTheme(progress.settings?.theme || 'light');
+        theme.init(saveSettings);
     } catch (e) {
         console.error("進捗データの読み込みに失敗しました:", e);
     }
 
-
-    // 3. Загружаем материалы
     const url = await fetchConfig();
     if (!url) {
         renderError(container, "CMSの設定を読み込めませんでした。");
