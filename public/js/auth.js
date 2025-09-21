@@ -1,81 +1,8 @@
-import * as api from './api.js';
-
-let onLoginCallback;
 let onLogoutCallback;
 
-function getDeviceId() {
-    let deviceId = localStorage.getItem('deviceId');
-    if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem('deviceId', deviceId);
-    }
-    return deviceId;
-}
-
-export function init(onLogin, onLogout) {
-    onLoginCallback = onLogin;
+export function init(onLogout) {
     onLogoutCallback = onLogout;
-
-    const registerForm = document.getElementById('register-form');
-    const loginForm = document.getElementById('login-form');
     const logoutButton = document.getElementById('logout-button');
-
-    const showRegisterLink = document.getElementById('show-register');
-    const showLoginLink = document.getElementById('show-login');
-    const loginContainer = document.getElementById('login-form-container');
-    const registerContainer = document.getElementById('register-form-container');
-
-    if (showRegisterLink && loginContainer && registerContainer) {
-        showRegisterLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            loginContainer.classList.add('hidden');
-            registerContainer.classList.remove('hidden');
-        });
-    }
-
-    if (showLoginLink && registerContainer && loginContainer) {
-        showLoginLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            registerContainer.classList.add('hidden');
-            loginContainer.classList.remove('hidden');
-        });
-    }
-
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = e.target.elements.username.value;
-            const password = e.target.elements.password.value;
-            const deviceId = getDeviceId();
-
-            try {
-                await api.register(username, password, deviceId);
-                alert('登録が成功しました！ログインしてください。');
-                e.target.reset();
-                if (registerContainer && loginContainer) {
-                    registerContainer.classList.add('hidden');
-                    loginContainer.classList.remove('hidden');
-                }
-            } catch (error) {
-                alert(`登録エラー: ${error.message}`);
-            }
-        });
-    }
-
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = e.target.elements.username.value;
-            const password = e.target.elements.password.value;
-            try {
-                const data = await api.login(username, password);
-                localStorage.setItem('accessToken', data.accessToken);
-                onLoginCallback(username);
-            } catch (error) {
-                alert(`ログインエラー: ${error.message}`);
-            }
-        });
-    }
 
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => {
@@ -84,6 +11,7 @@ export function init(onLogin, onLogout) {
         });
     }
 
+    // Глобальное событие для выхода (например, если токен просрочен)
     window.addEventListener('logout', () => {
         logout();
     });
@@ -105,3 +33,4 @@ export function parseJwt(token) {
         return null;
     }
 }
+

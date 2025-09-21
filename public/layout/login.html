@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン - 学習計画管理サイト</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body class="bg-gray-100">
+
+<div id="auth-container" class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg">
+        <!-- Форма входа -->
+        <div id="login-form-container">
+            <form id="login-form">
+                <h2 class="text-2xl font-bold text-center text-indigo-600 mb-6">ログイン</h2>
+                <div class="mb-4">
+                    <label for="login-username" class="block text-sm font-medium text-gray-700">ユーザー名</label>
+                    <input type="text" id="login-username" name="username" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">パスワード</label>
+                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">ログイン</button>
+                <p class="mt-4 text-center text-sm">アカウントをお持ちでないですか？ <a href="#" id="show-register" class="font-medium text-indigo-600 hover:text-indigo-500">新規登録</a></p>
+            </form>
+        </div>
+        <!-- Форма регистрации -->
+        <div id="register-form-container" class="hidden">
+            <form id="register-form">
+                <h2 class="text-2xl font-bold text-center text-indigo-600 mb-6">新規登録</h2>
+                <div class="mb-4">
+                    <label for="register-username" class="block text-sm font-medium text-gray-700">ユーザー名</label>
+                    <input type="text" id="register-username" name="username" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label for="register-password" class="block text-sm font-medium text-gray-700">パスワード</label>
+                    <input type="password" id="register-password" name="password" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">アカウント作成</button>
+                <p class="mt-4 text-center text-sm">すでにアカウントをお持ちですか？ <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">ログイン</a></p>
+            </form>
+        </div>
+        <div class="text-center mt-6">
+            <a href="about.html" target="_blank" class="text-sm text-gray-500 hover:text-indigo-600">このサイトについて・プライバシーポリシー</a>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="../js/login.js"></script>
+</body>
+</html>
