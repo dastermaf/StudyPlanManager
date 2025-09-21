@@ -2,27 +2,38 @@ import * as api from './api.js';
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
+import * as modal from './modal.js';
 
 let progress = {};
 let currentWeekIndex = 0;
 let saveTimeout;
 
-// Функция обратного вызова для смены недели
 function handleWeekChange(direction) {
     const newIndex = currentWeekIndex + direction;
     if (newIndex >= 0 && newIndex <= ui.WEEKS_COUNT) {
         currentWeekIndex = newIndex;
         progress.settings.currentWeekIndex = currentWeekIndex;
         saveProgress();
-        ui.renderWeek(currentWeekIndex, progress.lectures, handleLectureClick, handleNoteChange);
+        ui.renderWeek(currentWeekIndex, progress.lectures);
+    }
+}
+
+// ИЗМЕНЕНИЕ: Теперь эта функция передается в modal.init
+function handleModalUpdate(key, type, value) {
+    const [subjectId, lectureId] = key.split('-');
+    if (type === 'task') {
+        handleLectureClick(subjectId, lectureId, value);
+    } else if (type === 'note') {
+        handleNoteChange(subjectId, lectureId, value);
     }
 }
 
 async function initialize() {
     auth.init(onLoginSuccess, onLogout);
     theme.init(saveSettings);
-    ui.initModal();
-    ui.initNavigation(handleWeekChange); // Инициализируем навигацию
+    ui.initNavigation(handleWeekChange);
+    // Передаем нашу функцию-обработчик в модуль модального окна
+    modal.init(handleModalUpdate);
 
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -33,7 +44,6 @@ async function initialize() {
             onLogout();
         }
     } else {
-        // Если не на странице входа, но токена нет - разлогиниваем
         if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('login.html')) {
             onLogout();
         }
@@ -45,8 +55,8 @@ async function onLoginSuccess(username) {
     await loadUserProgress();
     theme.applyTheme(progress.settings?.theme || 'light');
     currentWeekIndex = progress.settings?.currentWeekIndex || 0;
-    ui.renderWeek(currentWeekIndex, progress.lectures, handleLectureClick, handleNoteChange);
-    ui.updateOverallProgress(progress.lectures); // Обновляем общий прогресс
+    ui.renderWeek(currentWeekIndex, progress.lectures);
+    ui.updateOverallProgress(progress.lectures);
 }
 
 function onLogout() {
@@ -76,8 +86,8 @@ function handleLectureClick(subjectId, lectureId, task) {
     lecture[task] = !lecture[task];
 
     saveProgress();
-    ui.updateWeeklyProgress(currentWeekIndex, progress.lectures);
-    ui.updateOverallProgress(progress.lectures); // Обновляем общий прогресс
+    ui.renderWeek(currentWeekIndex, progress.lectures);
+    ui.updateOverallProgress(progress.lectures);
 }
 
 function handleNoteChange(subjectId, lectureId, note) {
