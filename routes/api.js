@@ -61,33 +61,40 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 });
 
-// Login - ========== 変更点 ==========
+// Login
 router.post('/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
-    console.log(`LOG: /api/login: ユーザー '${username}' のログインリクエストを受信しました。`);
     try {
         const { rows } = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
         if (rows.length === 0) {
-            console.log(`LOG: /api/login: ユーザー '${username}' が見つかりません。`);
-            return res.status(400).json({ error: 'ユーザーが見つかりません。' });
+            return res.status(401).send("ユーザー名またはパスワードが正しくありません。");
         }
-
         const user = rows[0];
         if (await bcrypt.compare(password, user.password)) {
             const accessToken = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-            console.log(`LOG: /api/login: ユーザー '${username}' が正常にログインしました。`);
-            // ★★★★★ 変更点: JSONを返すように戻す ★★★★★
-            res.json({ accessToken: accessToken });
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7日間
+            });
+            res.redirect('/app');
         } else {
-            console.log(`LOG: /api/login: ユーザー '${username}' のパスワードが正しくありません。`);
-            res.status(401).json({ error: 'パスワードが正しくありません。' });
+            res.status(401).send("ユーザー名またはパスワードが正しくありません。");
         }
     } catch (error) {
-        console.error(`LOG: /api/login: ユーザー '${username}' の致命的なエラー:`, error);
-        res.status(500).json({ error: 'サーバーエラーが発生しました。' });
+        res.status(500).send("サーバーエラーが発生しました。");
     }
 });
 
+// Logout
+router.post('/logout', (req, res) => {
+    res.clearCookie('accessToken').sendStatus(200);
+});
+
+// Get Current User
+router.get('/user', authenticateToken, (req, res) => {
+    res.json(req.user);
+});
 
 // Progress GET
 router.get('/progress', authenticateToken, async (req, res) => {
