@@ -1,6 +1,9 @@
 const API_URL = '';
 
+console.log("LOG: api.js модуль загружен.");
+
 async function request(endpoint, options = {}) {
+    console.log(`LOG: api.js: Отправка запроса на ${endpoint}`, options.body ? `с телом: ${options.body}` : '');
     const token = localStorage.getItem('accessToken');
     const headers = {
         'Content-Type': 'application/json',
@@ -10,21 +13,32 @@ async function request(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+        console.log(`LOG: api.js: Получен ответ от ${endpoint} со статусом ${response.status}`);
 
-    if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-            window.dispatchEvent(new CustomEvent('logout'));
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                console.warn("LOG: api.js: Токен недействителен или отсутствует. Выполняется выход.");
+                window.dispatchEvent(new CustomEvent('logout'));
+            }
+            const errorData = await response.json().catch(() => ({ error: 'Не удалось прочитать тело ошибки' }));
+            console.error(`LOG: api.js: Ошибка ответа сервера для ${endpoint}:`, errorData);
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
-        const errorData = await response.json().catch(() => ({ error: '不明なエラー' }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
 
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
-        return response.json();
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const data = await response.json();
+            console.log(`LOG: api.js: Ответ JSON от ${endpoint}:`, data);
+            return data;
+        }
+        console.log(`LOG: api.js: Ответ от ${endpoint} не содержит JSON.`);
+        return null;
+    } catch (error) {
+        console.error(`LOG: api.js: Сетевая ошибка или сбой при запросе к ${endpoint}:`, error);
+        throw error; // Передаем ошибку дальше
     }
-    return null;
 }
 
 export function register(username, password, deviceId) {

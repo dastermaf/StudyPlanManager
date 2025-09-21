@@ -1,5 +1,7 @@
 import * as api from './api.js';
 
+console.log("LOG: auth.js модуль загружен.");
+
 let onLoginCallback;
 let onLogoutCallback;
 
@@ -8,11 +10,13 @@ function getDeviceId() {
     if (!deviceId) {
         deviceId = crypto.randomUUID();
         localStorage.setItem('deviceId', deviceId);
+        console.log("LOG: auth.js: Сгенерирован новый deviceId:", deviceId);
     }
     return deviceId;
 }
 
 export function init(onLogin, onLogout) {
+    console.log("LOG: auth.js: init() вызвана.");
     onLoginCallback = onLogin;
     onLogoutCallback = onLogout;
 
@@ -27,18 +31,21 @@ export function init(onLogin, onLogout) {
 
     showRegisterLink.addEventListener('click', (e) => {
         e.preventDefault();
+        console.log("LOG: auth.js: Клик по ссылке 'Зарегистрироваться'.");
         loginContainer.classList.add('hidden');
         registerContainer.classList.remove('hidden');
     });
 
     showLoginLink.addEventListener('click', (e) => {
         e.preventDefault();
+        console.log("LOG: auth.js: Клик по ссылке 'Войти'.");
         registerContainer.classList.add('hidden');
         loginContainer.classList.remove('hidden');
     });
 
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log("LOG: auth.js: Форма регистрации отправлена.");
         const username = e.target.username.value;
         const password = e.target.password.value;
         const deviceId = getDeviceId();
@@ -50,29 +57,35 @@ export function init(onLogin, onLogout) {
             registerContainer.classList.add('hidden');
             loginContainer.classList.remove('hidden');
         } catch (error) {
+            console.error(`LOG: auth.js: Ошибка регистрации:`, error);
             alert(`登録エラー: ${error.message}`);
         }
     });
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log("LOG: auth.js: Форма входа отправлена.");
         const username = e.target.username.value;
         const password = e.target.password.value;
         try {
             const data = await api.login(username, password);
+            console.log("LOG: auth.js: Успешный вход, получен токен.");
             localStorage.setItem('accessToken', data.accessToken);
             onLoginCallback(username);
         } catch (error) {
+            console.error(`LOG: auth.js: Ошибка входа:`, error);
             alert(`ログインエラー: ${error.message}`);
         }
     });
 
     logoutButton.addEventListener('click', (e) => {
         e.preventDefault();
+        console.log("LOG: auth.js: Кнопка выхода нажата.");
         logout();
     });
 
     window.addEventListener('logout', () => {
+        console.log("LOG: auth.js: Получено глобальное событие 'logout'.");
         logout();
     });
 }
@@ -90,6 +103,7 @@ export function parseJwt(token) {
         }).join(''));
         return JSON.parse(jsonPayload);
     } catch (e) {
+        console.error("LOG: auth.js: Ошибка парсинга JWT:", e);
         return null;
     }
 }
