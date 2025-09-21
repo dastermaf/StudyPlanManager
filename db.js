@@ -90,16 +90,16 @@ const initializeDatabase = async (retries = 5) => {
 
             client.release();
             console.log("LOG: db.js: データベースの初期化が正常に完了しました。");
-            return;
+            return; // 成功したらループを抜ける
         } catch (error) {
-            if (error.code === '57P03' && retries > 0) {
-                console.warn(`LOG: db.js: データベースの準備がまだできていません。残り試行回数: ${retries - 1}。5秒後に再試行します...`);
-                await wait(5000);
-                retries--;
-            } else {
-                console.error('LOG: db.js: データベース初期化中に致命的なエラーが発生しました:', error);
-                throw error;
+            retries--;
+            console.error(`LOG: db.js: データベース初期化中にエラーが発生しました。残り試行回数: ${retries}`, error);
+            if (retries === 0) {
+                // 最終的に失敗した場合はエラーをスロー
+                throw new Error("データベースに接続できませんでした。");
             }
+            // 5秒待ってから再試行
+            await wait(5000);
         }
     }
 };
