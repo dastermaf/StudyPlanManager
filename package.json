@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:css": "tailwindcss -i ./public/input.css -o ./public/style.css",
-    "postinstall": "npm run build:css"
+    "build:css": "tailwindcss -i ./public/input.css -o ./public/style.css"
   },
   "author": "",
   "license": "ISC",
