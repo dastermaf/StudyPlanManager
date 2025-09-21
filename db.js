@@ -13,11 +13,10 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const initializeDatabase = async (retries = 5) => {
     while (retries) {
         try {
-            console.log("LOG: db.js: Попытка подключения к базе данных...");
+            console.log("LOG: db.js: データベースへの接続を試行しています...");
             const client = await pool.connect();
-            console.log("LOG: db.js: Успешное подключение к базе данных.");
+            console.log("LOG: db.js: データベースへの接続に成功しました。");
 
-            // ... (остальной код инициализации без изменений)
             await client.query(`
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -26,7 +25,7 @@ const initializeDatabase = async (retries = 5) => {
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             `);
-            console.log('LOG: db.js: Таблица "users" готова.');
+            console.log('LOG: db.js: テーブル "users" の準備が完了しました。');
 
             await client.query(`
                 CREATE TABLE IF NOT EXISTS device_registrations (
@@ -37,7 +36,7 @@ const initializeDatabase = async (retries = 5) => {
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );
             `);
-            console.log('LOG: db.js: Таблица "device_registrations" готова.');
+            console.log('LOG: db.js: テーブル "device_registrations" の準備が完了しました。');
 
             const res = await client.query(`
                 SELECT data_type FROM information_schema.columns
@@ -45,7 +44,7 @@ const initializeDatabase = async (retries = 5) => {
             `);
 
             if (res.rowCount === 0 || res.rows[0].data_type.toLowerCase().includes('text')) {
-                console.log('LOG: db.js: Обнаружена устаревшая структура "progress". Пересоздание...');
+                console.log('LOG: db.js: 古い、または存在しない "progress" の構造が検出されました。再作成します...');
                 await client.query('DROP TABLE IF EXISTS progress;');
                 await client.query(`
                      CREATE TABLE progress (
@@ -55,23 +54,22 @@ const initializeDatabase = async (retries = 5) => {
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                     );
                 `);
-                console.log('LOG: db.js: Таблица "progress" успешно создана.');
+                console.log('LOG: db.js: テーブル "progress" が正常に作成されました。');
             } else {
-                console.log('LOG: db.js: Таблица "progress" уже имеет правильную структуру.');
+                console.log('LOG: db.js: テーブル "progress" はすでに正しい構造です。');
             }
 
             client.release();
-            console.log("LOG: db.js: Инициализация базы данных успешно завершена.");
-            return; // Выходим из цикла и функции при успехе
+            console.log("LOG: db.js: データベースの初期化が正常に完了しました。");
+            return; // Успех, выходим из цикла
         } catch (error) {
-            // Код '57P03' означает, что база данных все еще запускается
             if (error.code === '57P03' && retries > 0) {
-                console.warn(`LOG: db.js: База данных еще не готова. Осталось попыток: ${retries - 1}. Повтор через 5 секунд...`);
+                console.warn(`LOG: db.js: データベースの準備がまだできていません。残り試行回数: ${retries - 1}。5秒後に再試行します...`);
                 await wait(5000); // Ждем 5 секунд
                 retries--;
             } else {
-                console.error('LOG: db.js: КРИТИЧЕСКАЯ ОШИБКА при инициализации базы данных:', error);
-                throw error; // Если ошибка другая или попытки кончились, выбрасываем ее
+                console.error('LOG: db.js: データベース初期化中に致命的なエラーが発生しました:', error);
+                throw error; // Другая ошибка, пробрасываем ее
             }
         }
     }

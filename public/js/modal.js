@@ -1,25 +1,18 @@
 import { SUBJECTS } from './studyPlan.js';
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxjcgqUg4cbmiEeHII7pltwttIECuT9eoUZurUDGx2KW4j_gP1jPOKO2wkLYCaXoow6/exec";
-
+// --- Переменные модуля ---
+let SCRIPT_URL = null;
 let activeModalKey = null;
 let handleTaskChangeCallback = null;
 
-const modalOverlay = document.getElementById('modal-overlay');
-const modalContent = document.getElementById('modal-content');
-const modalTitle = document.getElementById('modal-title');
-const modalBody = document.getElementById('modal-body');
-const taskVodCheckbox = document.getElementById('task-vod');
-const taskTestCheckbox = document.getElementById('task-test');
-const noteTextarea = document.getElementById('note-textarea');
-const closeXButton = document.getElementById('modal-close-x');
+// Переменные для элементов DOM, будут определены в init
+let modalOverlay, modalContent, modalTitle, modalBody, taskVodCheckbox, taskTestCheckbox, noteTextarea, closeXButton;
 
-// --- ЛОГИРОВАНИЕ ---
+// --- Внутренние функции ---
 function log(message, ...details) {
     console.log(`[Modal LOG] ${message}`, ...details);
 }
 
-// --- Управление модальным окном ---
 function openModal() {
     modalOverlay.classList.remove('hidden');
     modalContent.classList.remove('hidden');
@@ -39,24 +32,22 @@ function closeModal() {
     }, 300);
 }
 
-// --- Рендеринг контента ---
 function renderModalContent(data) {
     modalBody.innerHTML = '';
 
     if (Object.keys(data).length === 0) {
-        log("Данные для этой главы не найдены в таблице.");
+        log("この章のデータはスプレッドシートに見つかりませんでした。");
         modalBody.innerHTML = `<div class="text-center p-8 text-gray-500 dark:text-gray-400">この章に登録された教材はありません。</div>`;
         return;
     }
 
-    log(`Рендеринг ${Object.keys(data).length} уроков.`);
+    log(`${Object.keys(data).length}個のレッスンをレンダリングします。`);
     for (const lessonTitle in data) {
         const lessonContainer = document.createElement('div');
         lessonContainer.className = 'mb-6';
 
         data[lessonTitle].forEach(item => {
             let element;
-            // ... (switch-case остается без изменений)
             switch (item.type) {
                 case 'header':
                     element = document.createElement('h4');
@@ -91,7 +82,6 @@ function renderModalContent(data) {
     }
 }
 
-// --- ОБРАБОТКА ОШИБОК ---
 function renderError(message) {
     modalBody.innerHTML = `<div class="text-center p-8 text-red-500 dark:text-red-400">
         <h4 class="font-bold text-lg mb-2">教材の読み込みに失敗しました。</h4>
@@ -100,141 +90,109 @@ function renderError(message) {
     </div>`;
 }
 
+async function fetchConfig() {
+    try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+            throw new Error('サーバーから設定を取得できませんでした。');
+        }
+        const config = await response.json();
+        if (config.cms_link) {
+            SCRIPT_URL = config.cms_link;
+            log("CMSの設定が正常に読み込まれました。");
+        } else {
+            throw new Error('サーバーの応答にCMSのリンクが含まれていません。');
+        }
+    } catch (error) {
+        console.error("[Modal FATAL] CMS設定の読み込みエラー:", error);
+        SCRIPT_URL = null;
+    }
+}
 
-// --- ПУБЛИЧНЫЕ ФУНКЦИИ ---
+// --- Экспортируемые функции ---
 
 export async function show(key, progressData) {
     activeModalKey = key;
     const [subjectId, lectureId] = key.split('-');
     const subject = SUBJECTS.find(s => s.id === subjectId);
     if (!subject) {
-        log("Критическая ошибка: не найден предмет с ID:", subjectId);
+        log("致命的なエラー: IDを持つ科目が見つかりません:", subjectId);
         return;
     }
 
-    log(`Открытие модального окна для: ${subject.name} - Глава ${lectureId}`);
+    log(`モーダルを開きます: ${subject.name} - 第${lectureId}章`);
     modalTitle.textContent = `${subject.name} - 第${lectureId}章`;
     modalBody.innerHTML = `<div class="text-center p-8 text-gray-500 dark:text-gray-400">読み込み中...</div>`;
 
-    const lectureProgress = progressData[subjectId]?.[lectureId] || {vod: false, test: false, note: ''};
+    const lectureProgress = progressData[subjectId]?.[lectureId] || { vod: false, test: false, note: '' };
     taskVodCheckbox.checked = lectureProgress.vod;
     taskTestCheckbox.checked = lectureProgress.test;
     noteTextarea.value = lectureProgress.note || '';
 
     openModal();
 
-
-// --- ПУБЛИЧНЫЕ ФУНКЦИИ ---
-
-    export async function show(key, progressData) {
-        activeModalKey = key;
-        const [subjectId, lectureId] = key.split('-');
-        const subject = SUBJECTS.find(s => s.id === subjectId);
-        if (!subject) {
-            log("Критическая ошибка: не найден предмет с ID:", subjectId);
-            return;
-        }
-
-        log(`Открытие модального окна для: ${subject.name} - Глава ${lectureId}`);
-        modalTitle.textContent = `${subject.name} - 第${lectureId}章`;
-        modalBody.innerHTML = `<div class="text-center p-8 text-gray-500 dark:text-gray-400">読み込み中...</div>`;
-
-        const lectureProgress = progressData[subjectId]?.[lectureId] || {vod: false, test: false, note: ''};
-        taskVodCheckbox.checked = lectureProgress.vod;
-        taskTestCheckbox.checked = lectureProgress.test;
-        noteTextarea.value = lectureProgress.note || '';
-
-        openModal();
-
-        // --- НАДЕЖНАЯ ЗАГРУЗКА ДАННЫХ ---
-        try {
-            // Проверяем, что SCRIPT_URL был получен
+    try {
+        if (!SCRIPT_URL) {
+            await fetchConfig();
             if (!SCRIPT_URL) {
-                // Пытаемся получить его снова
-                await fetchConfig();
-                if (!SCRIPT_URL) {
-                    throw new Error("Не удалось получить конфигурацию CMS с сервера.");
-                }
+                throw new Error("サーバーからCMS設定を取得できませんでした。");
             }
-
-            const requestUrl = `${SCRIPT_URL}?subject=${subjectId}&chapter=${lectureId}`;
-            log(`Отправка запроса на: ${requestUrl}`);
-
-            const response = await fetch(requestUrl);
-            log(`Получен ответ со статусом: ${response.status}`);
-
-            if (!response.ok) {
-                throw new Error(`Ошибка сети или сервера скрипта (статус: ${response.status}).`);
-            }
-
-            const data = await response.json();
-            log("Ответ успешно получен и распарсен в JSON:", data);
-
-            if (data.error) {
-                throw new Error(`Ошибка от Apps Script: ${data.details || data.error}`);
-            }
-
-            renderModalContent(data);
-            log("Контент успешно отображен.");
-
-        } catch (error) {
-            log("КРИТИЧЕСКАЯ ОШИБКА при загрузке материалов:", error);
-            renderError(error.message);
         }
-    }
 
-// Новая функция для получения SCRIPT_URL с нашего бэкенда
-    async function fetchConfig() {
-        try {
-            const response = await fetch('/api/config');
-            if (!response.ok) {
-                throw new Error('Не удалось получить конфигурацию с сервера.');
-            }
-            const config = await response.json();
-            if (config.cms_link) {
-                SCRIPT_URL = config.cms_link;
-                log("Конфигурация CMS успешно загружена.");
-            } else {
-                throw new Error('Ссылка на CMS отсутствует в ответе сервера.');
-            }
-        } catch (error) {
-            console.error("[Modal FATAL] Ошибка загрузки конфигурации CMS:", error);
-            SCRIPT_URL = null;
+        const requestUrl = `${SCRIPT_URL}?subject=${subjectId}&chapter=${lectureId}`;
+        log(`リクエストを送信します: ${requestUrl}`);
+
+        const response = await fetch(requestUrl);
+        log(`ステータス ${response.status} の応答を受信しました。`);
+
+        if (!response.ok) {
+            throw new Error(`ネットワークまたはスクリプトサーバーのエラー（ステータス: ${response.status}）。`);
         }
+
+        const data = await response.json();
+        log("応答は正常にJSONとして解析されました:", data);
+
+        if (data.error) {
+            throw new Error(`Apps Scriptからのエラー: ${data.details || data.error}`);
+        }
+
+        renderModalContent(data);
+        log("コンテンツが正常に表示されました。");
+
+    } catch (error) {
+        log("致命的なエラー：教材の読み込み中:", error);
+        renderError(error.message);
     }
+}
 
-// Инициализация модуля
-    export async function init(onTaskChange) {
-        // Инициализируем переменные DOM только когда страница загружена
-        modalOverlay = document.getElementById('modal-overlay');
-        modalContent = document.getElementById('modal-content');
-        modalTitle = document.getElementById('modal-title');
-        modalBody = document.getElementById('modal-body');
-        taskVodCheckbox = document.getElementById('task-vod');
-        taskTestCheckbox = document.getElementById('task-test');
-        noteTextarea = document.getElementById('note-textarea');
-        closeXButton = document.getElementById('modal-close-x');
+export async function init(onTaskChange) {
+    modalOverlay = document.getElementById('modal-overlay');
+    modalContent = document.getElementById('modal-content');
+    modalTitle = document.getElementById('modal-title');
+    modalBody = document.getElementById('modal-body');
+    taskVodCheckbox = document.getElementById('task-vod');
+    taskTestCheckbox = document.getElementById('task-test');
+    noteTextarea = document.getElementById('note-textarea');
+    closeXButton = document.getElementById('modal-close-x');
 
-        handleTaskChangeCallback = onTaskChange;
+    handleTaskChangeCallback = onTaskChange;
 
-        // Загружаем конфигурацию при инициализации
-        await fetchConfig();
+    await fetchConfig();
 
-        modalOverlay?.addEventListener('click', closeModal);
-        closeXButton?.addEventListener('click', closeModal);
-        taskVodCheckbox?.addEventListener('change', () => {
-            if (activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'vod');
-        });
-        taskTestCheckbox?.addEventListener('change', () => {
-            if (activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'test');
-        });
+    modalOverlay?.addEventListener('click', closeModal);
+    closeXButton?.addEventListener('click', closeModal);
+    taskVodCheckbox?.addEventListener('change', () => {
+        if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'vod');
+    });
+    taskTestCheckbox?.addEventListener('change', () => {
+        if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'test');
+    });
 
-        let noteTimeout;
-        noteTextarea?.addEventListener('input', (e) => {
-            clearTimeout(noteTimeout);
-            noteTimeout = setTimeout(() => {
-                if (activeModalKey) handleTaskChangeCallback(activeModalKey, 'note', e.target.value);
-            }, 500);
-        });
-    }
+    let noteTimeout;
+    noteTextarea?.addEventListener('input', (e) => {
+        clearTimeout(noteTimeout);
+        noteTimeout = setTimeout(() => {
+            if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'note', e.target.value);
+        }, 500);
+    });
 }

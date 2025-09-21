@@ -12,13 +12,12 @@ function handleWeekChange(direction) {
     const newIndex = currentWeekIndex + direction;
     if (newIndex >= 0 && newIndex <= ui.WEEKS_COUNT) {
         currentWeekIndex = newIndex;
-        progress.settings.currentWeekIndex = currentWeekIndex;
+        if(progress.settings) progress.settings.currentWeekIndex = currentWeekIndex;
         saveProgress();
         ui.renderWeek(currentWeekIndex, progress.lectures);
     }
 }
 
-// ИЗМЕНЕНИЕ: Теперь эта функция передается в modal.init
 function handleModalUpdate(key, type, value) {
     const [subjectId, lectureId] = key.split('-');
     if (type === 'task') {
@@ -32,7 +31,6 @@ async function initialize() {
     auth.init(onLoginSuccess, onLogout);
     theme.init(saveSettings);
     ui.initNavigation(handleWeekChange);
-    // ИЗМЕНЕНИЕ: Добавляем await, так как init теперь асинхронный
     await modal.init(handleModalUpdate);
 
     const token = localStorage.getItem('accessToken');
@@ -44,7 +42,7 @@ async function initialize() {
             onLogout();
         }
     } else {
-        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('login.html')) {
+        if (window.location.pathname.startsWith('/app')) {
             onLogout();
         }
     }
@@ -72,7 +70,7 @@ async function loadUserProgress() {
         if (!progress.settings) progress.settings = { theme: 'light', currentWeekIndex: 0 };
         if (!progress.lectures) progress.lectures = {};
     } catch (error) {
-        console.error('Ошибка при загрузке прогресса:', error);
+        console.error('進捗の読み込み中にエラーが発生しました:', error);
         onLogout();
     }
 }
@@ -111,7 +109,7 @@ function saveProgress() {
         try {
             await api.saveProgress(progress);
         } catch (error) {
-            console.error('Ошибка при сохранении прогресса:', error);
+            console.error('進捗の保存中にエラーが発生しました:', error);
         }
     }, 1000);
 }
