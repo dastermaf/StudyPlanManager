@@ -9,4 +9,3 @@ export const courseData = {
     "CBD2502001": { name: "基盤英語2", lectures: 15 },
     "CAI2500001": { name: "メディアリテラシ", lectures: 15 } // ID может быть неточным, но для теста подойдет
 };
-

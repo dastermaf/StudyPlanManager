@@ -1,5 +1,6 @@
 import { courseData } from './courseData.js';
-// ВАЖНО: Удалена некорректная строка "import Chart from '...';"
+// ВАЖНО: Удалена некорректная строка "import Chart from '...';", которая вызывала ошибку.
+// Библиотека Chart.js теперь корректно загружается из index.html.
 
 let dashboardChart = null;
 
