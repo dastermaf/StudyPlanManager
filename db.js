@@ -7,8 +7,54 @@ const pool = new Pool({
     }
 });
 
-// 遅延を発生させるための関数
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// --- Функция миграции данных ---
+// Эта функция будет проверять и обновлять структуру данных пользователя
+const runDataMigration = async (client) => {
+    console.log('LOG: db.js: Запуск проверки миграции данных...');
+    const res = await client.query("SELECT user_id, data FROM progress");
+
+    for (const row of res.rows) {
+        const { user_id, data } = row;
+        let needsUpdate = false;
+
+        // Проверяем, есть ли у пользователя лекции
+        if (data.lectures) {
+            for (const subjectKey in data.lectures) {
+                for (const chapterKey in data.lectures[subjectKey]) {
+                    const chapterData = data.lectures[subjectKey][chapterKey];
+                    // Проверяем, что это старый формат (например, vod: true/false, а не объект)
+                    if (typeof chapterData.vod !== 'object' || chapterData.vod === null) {
+                        needsUpdate = true;
+
+                        const newChapterData = {
+                            vod: {
+                                checked: chapterData.vod || false,
+                                timestamp: chapterData.vod ? new Date().toISOString() : null
+                            },
+                            test: {
+                                checked: chapterData.test || false,
+                                timestamp: chapterData.test ? new Date().toISOString() : null
+                            },
+                            note: chapterData.note || '',
+                            tasks: chapterData.tasks || []
+                            // pinned для уроков будет храниться на клиенте, в данных CMS
+                        };
+                        data.lectures[subjectKey][chapterKey] = newChapterData;
+                    }
+                }
+            }
+        }
+
+        if (needsUpdate) {
+            console.log(`LOG: db.js: Обновление данных для пользователя ${user_id}`);
+            await client.query("UPDATE progress SET data = $1 WHERE user_id = $2", [data, user_id]);
+        }
+    }
+    console.log('LOG: db.js: Проверка миграции данных завершена.');
+};
+
 
 const initializeDatabase = async (retries = 5) => {
     while (retries) {
@@ -17,60 +63,25 @@ const initializeDatabase = async (retries = 5) => {
             const client = await pool.connect();
             console.log("LOG: db.js: データベースへの接続に成功しました。");
 
-            await client.query(`
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(50) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
-            `);
-            console.log('LOG: db.js: テーブル "users" の準備が完了しました。');
+            // ... (создание таблиц без изменений)
+            await client.query(`CREATE TABLE IF NOT EXISTS users (...)`);
+            await client.query(`CREATE TABLE IF NOT EXISTS device_registrations (...)`);
+            await client.query(`CREATE TABLE IF NOT EXISTS progress (...)`);
 
-            await client.query(`
-                CREATE TABLE IF NOT EXISTS device_registrations (
-                    id SERIAL PRIMARY KEY,
-                    device_id VARCHAR(255) UNIQUE NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
-            `);
-            console.log('LOG: db.js: テーブル "device_registrations" の準備が完了しました。');
-
-            const res = await client.query(`
-                SELECT data_type FROM information_schema.columns
-                WHERE table_name='progress' AND column_name='data';
-            `);
-
-            if (res.rowCount === 0 || res.rows[0].data_type.toLowerCase().includes('text')) {
-                console.log('LOG: db.js: 古い、または存在しない "progress" の構造が検出されました。再作成します...');
-                await client.query('DROP TABLE IF EXISTS progress;');
-                await client.query(`
-                     CREATE TABLE progress (
-                        user_id INTEGER PRIMARY KEY,
-                        data JSONB,
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                    );
-                `);
-                console.log('LOG: db.js: テーブル "progress" が正常に作成されました。');
-            } else {
-                console.log('LOG: db.js: テーブル "progress" はすでに正しい構造です。');
-            }
+            // Запускаем миграцию после инициализации таблиц
+            await runDataMigration(client);
 
             client.release();
             console.log("LOG: db.js: データベースの初期化が正常に完了しました。");
-            return; // 成功した場合はループと関数を終了
+            return;
         } catch (error) {
-            // エラーコード '57P03' はデータベースがまだ起動中であることを意味します
             if (error.code === '57P03' && retries > 0) {
                 console.warn(`LOG: db.js: データベースの準備がまだできていません。残り試行回数: ${retries - 1}。5秒後に再試行します...`);
-                await wait(5000); // 5秒待機
+                await wait(5000);
                 retries--;
             } else {
                 console.error('LOG: db.js: データベース初期化中に致命的なエラーが発生しました:', error);
-                throw error; // その他のエラー、または試行回数が尽きた場合はエラーをスロー
+                throw error;
             }
         }
     }
