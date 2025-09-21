@@ -2,7 +2,8 @@ import * as api from './api.js';
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
-import * as modal from './modal.js';
+
+// modal.js больше не импортируется
 
 let progress = {};
 let currentWeekIndex = 0;
@@ -18,20 +19,13 @@ function handleWeekChange(direction) {
     }
 }
 
-function handleModalUpdate(key, type, value) {
-    const [subjectId, lectureId] = key.split('-');
-    if (type === 'task') {
-        handleLectureClick(subjectId, lectureId, value);
-    } else if (type === 'note') {
-        handleNoteChange(subjectId, lectureId, value);
-    }
-}
+// handleModalUpdate больше не нужен
 
 async function initialize() {
     auth.init(onLoginSuccess, onLogout);
     theme.init(saveSettings);
     ui.initNavigation(handleWeekChange);
-    await modal.init(handleModalUpdate);
+    // modal.init больше не вызывается
 
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -75,27 +69,9 @@ async function loadUserProgress() {
     }
 }
 
-function handleLectureClick(subjectId, lectureId, task) {
-    if (!progress.lectures[subjectId]) progress.lectures[subjectId] = {};
-    if (!progress.lectures[subjectId][lectureId]) {
-        progress.lectures[subjectId][lectureId] = { vod: false, test: false, note: '' };
-    }
-    const lecture = progress.lectures[subjectId][lectureId];
-    lecture[task] = !lecture[task];
-
-    saveProgress();
-    ui.renderWeek(currentWeekIndex, progress.lectures);
-    ui.updateOverallProgress(progress.lectures);
-}
-
-function handleNoteChange(subjectId, lectureId, note) {
-    if (!progress.lectures[subjectId]) progress.lectures[subjectId] = {};
-    if (!progress.lectures[subjectId][lectureId]) {
-        progress.lectures[subjectId][lectureId] = { vod: false, test: false, note: '' };
-    }
-    progress.lectures[subjectId][lectureId].note = note;
-    saveProgress();
-}
+// Функции handleLectureClick и handleNoteChange больше не нужны в этом файле,
+// так как прогресс теперь отмечается на странице материалов.
+// Но мы оставим их на случай, если Вы захотите добавить чекбоксы прямо в главный экран.
 
 function saveSettings(key, value) {
     if (!progress.settings) progress.settings = {};

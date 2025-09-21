@@ -4,7 +4,6 @@ const router = express.Router();
 
 // Маршрут для страницы входа
 router.get('/', (req, res) => {
-    // __dirname - это текущая папка (routes), '..' - подняться на уровень выше
     res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'login.html'));
 });
 
@@ -13,7 +12,12 @@ router.get('/app', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'index.html'));
 });
 
-// ИСПРАВЛЕНИЕ: Новый маршрут для страницы "О сайте"
+// Новый маршрут для страницы материалов
+router.get('/materials/:subjectId/:chapterNo', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'materials.html'));
+});
+
+// Маршрут для страницы "О сайте"
 router.get('/about', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'about.html'));
 });

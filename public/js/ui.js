@@ -1,5 +1,6 @@
 import { SUBJECTS, WEEKLY_NOTES } from './studyPlan.js';
-import * as modal from './modal.js'; // Импортируем новый модуль
+
+// Важно: Мы больше не импортируем modal.js
 
 export const WEEKS_COUNT = 15;
 
@@ -51,7 +52,7 @@ export function renderWeek(weekIndex, progressData) {
         SUBJECTS.forEach((subject) => {
             const card = document.createElement('div');
             const hasImportantNote = WEEKLY_NOTES[currentWeek] && WEEKLY_NOTES[currentWeek][subject.name];
-            card.className = `bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between transition-transform transform hover:scale-105 ${hasImportantNote ? 'border-2 border-yellow-400' : ''}`;
+            card.className = `bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between ${hasImportantNote ? 'border-2 border-yellow-400' : ''}`;
 
             let lecturesHtml = '';
             for (let i = 1; i <= subject.totalLectures; i++) {
@@ -64,7 +65,8 @@ export function renderWeek(weekIndex, progressData) {
                 if (status === 'completed') lectureClass = 'completed';
                 else if (status === 'in-progress') lectureClass = 'in-progress';
                 else if (isRecommended) lectureClass = 'recommended';
-                lecturesHtml += `<div class="lecture-box ${lectureClass}" data-key="${key}">第${i}章</div>`;
+                // ИЗМЕНЕНИЕ: Оборачиваем в тег <a> для перехода
+                lecturesHtml += `<a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>`;
             }
 
             let noteHtml = hasImportantNote ? `<div class="important-note p-3 mt-4 text-sm rounded-r-lg"><p class="whitespace-pre-line">${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
@@ -81,11 +83,6 @@ export function renderWeek(weekIndex, progressData) {
                 </div>
             `;
             planContainer.appendChild(card);
-        });
-
-        document.querySelectorAll('.lecture-box').forEach(box => {
-            // При клике теперь вызывается функция из модуля modal
-            box.addEventListener('click', () => modal.show(box.dataset.key, progressData));
         });
     }
 
