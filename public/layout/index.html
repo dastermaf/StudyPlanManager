@@ -26,6 +26,24 @@
             </div>
         </header>
 
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md mb-6">
+            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">学習全体の達成度</h2>
+            <div class="flex items-center gap-4">
+                <div class="w-full progress-bar-bg rounded-full h-5 shadow-inner">
+                    <div id="overall-progress-bar" class="progress-bar-fg h-5 rounded-full flex items-center justify-center text-sm font-bold text-green-900"></div>
+                </div>
+                <span id="overall-progress-text" class="font-bold text-lg text-indigo-700 dark:text-indigo-400 w-20 text-right">0.0%</span>
+            </div>
+            <p id="motivational-quote" class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3"></p>
+        </div>
+
+        <div class="sticky top-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 py-4 mb-6 rounded-lg">
+        </div>
+
+        <main id="plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
+
+        <div id="final-prep-container" class="hidden mt-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+        </div>
     </div>
     <footer class="text-center mt-12 py-6 border-t border-gray-200 dark:border-gray-700">
     </footer>

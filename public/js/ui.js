@@ -13,7 +13,6 @@ const MOTIVATIONAL_QUOTES = [
 
 function getChapterStatus(chapterProgress) {
     if (!chapterProgress) return 'incomplete';
-    // Исправлено: проверяем именно свойство checked
     if (chapterProgress.vod?.checked && chapterProgress.test?.checked) return 'completed';
     if (chapterProgress.vod?.checked || chapterProgress.test?.checked) return 'in-progress';
     return 'incomplete';
@@ -33,11 +32,10 @@ export function renderWeek(weekIndex, progressData) {
     if (!planContainer) return;
     planContainer.innerHTML = '';
 
-    // Логика закрепления: сортируем предметы так, чтобы закрепленные были первыми
     const sortedSubjects = [...SUBJECTS].sort((a, b) => {
         const progressA = progressData[a.id] || {};
-        const progressB = progressData[b.id] || {};
         const isAPinned = Object.values(progressA).some(ch => ch.pinned);
+        const progressB = progressData[b.id] || {};
         const isBPinned = Object.values(progressB).some(ch => ch.pinned);
         if (isAPinned && !isBPinned) return -1;
         if (!isAPinned && isBPinned) return 1;

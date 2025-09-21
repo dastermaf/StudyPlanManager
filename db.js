@@ -9,8 +9,6 @@ const pool = new Pool({
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- データ移行機能 ---
-// ユーザーデータの構造を確認・更新する関数
 const runDataMigration = async (client) => {
     console.log('LOG: db.js: データ移行チェックを開始します...');
     const res = await client.query("SELECT user_id, data FROM progress");
@@ -23,7 +21,6 @@ const runDataMigration = async (client) => {
             for (const subjectKey in data.lectures) {
                 for (const chapterKey in data.lectures[subjectKey]) {
                     const chapterData = data.lectures[subjectKey][chapterKey];
-                    // 古いフォーマット（例：vodがオブジェクトではなくboolean）であるかを確認
                     if (typeof chapterData.vod !== 'object' || chapterData.vod === null) {
                         needsUpdate = true;
 
@@ -38,7 +35,7 @@ const runDataMigration = async (client) => {
                             },
                             note: chapterData.note || '',
                             tasks: chapterData.tasks || [],
-                            pinned: chapterData.pinned || false // ピン留めフィールドを追加
+                            pinned: chapterData.pinned || false
                         };
                         data.lectures[subjectKey][chapterKey] = newChapterData;
                     }
@@ -53,7 +50,6 @@ const runDataMigration = async (client) => {
     }
     console.log('LOG: db.js: データ移行チェックが完了しました。');
 };
-
 
 const initializeDatabase = async (retries = 5) => {
     while (retries) {

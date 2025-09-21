@@ -4,7 +4,7 @@ import { SUBJECTS } from './studyPlan.js';
 
 let progress = {};
 
-// --- Функции для графиков ---
+// --- グラフ描画関数 ---
 function renderActivityChart(chartData) {
     const ctx = document.getElementById('activity-chart').getContext('2d');
     new Chart(ctx, {
@@ -40,10 +40,7 @@ function renderSubjectsChart(chartData) {
             datasets: [{
                 label: '完了率',
                 data: chartData.data,
-                backgroundColor: [
-                    '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-                    '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'
-                ],
+                backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'],
             }]
         },
         options: {
@@ -56,8 +53,7 @@ function renderSubjectsChart(chartData) {
     });
 }
 
-
-// --- Подготовка данных ---
+// --- データ処理 ---
 function processDataForCharts() {
     const activity = {};
     const subjectProgress = {};
@@ -98,19 +94,26 @@ function processDataForCharts() {
     renderSubjectsChart(subjectsChartData);
 }
 
-// --- Экспорт данных ---
+// --- データエクスポート ---
 function exportData() {
-    const dataStr = JSON.stringify(progress, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `study-plan-progress-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+        const dataStr = JSON.stringify(progress, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `study-plan-progress-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("データのエクスポートに失敗しました:", error);
+        alert("データのエクスポートに失敗しました。");
+    }
 }
 
-// --- Инициализация ---
+// --- 初期化 ---
 async function initialize() {
     const token = sessionStorage.getItem('accessToken');
     if (!token) {
@@ -125,11 +128,12 @@ async function initialize() {
         theme.applyTheme(progress.settings?.theme || 'light');
         theme.init((key, value) => {
             if (progress.settings) progress.settings[key] = value;
-            // При смене темы на дашборде нет необходимости сохранять прогресс
+            // Дашборд не сохраняет прогресс, только отображает
         });
         processDataForCharts();
     } catch (e) {
         console.error("進捗データの読み込みに失敗しました:", e);
+        document.body.innerHTML = `<div class="text-red-500 p-8">データの読み込みに失敗しました。メインページに戻ってください。</div>`;
     }
 }
 

@@ -14,7 +14,6 @@ router.get('/materials/:subjectId/:chapterNo', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'materials.html'));
 });
 
-// Новый маршрут для дашборда
 router.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'dashboard.html'));
 });
