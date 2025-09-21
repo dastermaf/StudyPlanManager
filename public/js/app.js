@@ -32,8 +32,8 @@ async function initialize() {
     auth.init(onLoginSuccess, onLogout);
     theme.init(saveSettings);
     ui.initNavigation(handleWeekChange);
-    // Передаем нашу функцию-обработчик в модуль модального окна
-    modal.init(handleModalUpdate);
+    // ИЗМЕНЕНИЕ: Добавляем await, так как init теперь асинхронный
+    await modal.init(handleModalUpdate);
 
     const token = localStorage.getItem('accessToken');
     if (token) {

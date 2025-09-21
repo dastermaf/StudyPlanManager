@@ -100,6 +100,7 @@ function renderError(message) {
     </div>`;
 }
 
+
 // --- ПУБЛИЧНЫЕ ФУНКЦИИ ---
 
 export async function show(key, progressData) {
@@ -115,62 +116,125 @@ export async function show(key, progressData) {
     modalTitle.textContent = `${subject.name} - 第${lectureId}章`;
     modalBody.innerHTML = `<div class="text-center p-8 text-gray-500 dark:text-gray-400">読み込み中...</div>`;
 
-    const lectureProgress = progressData[subjectId]?.[lectureId] || { vod: false, test: false, note: '' };
+    const lectureProgress = progressData[subjectId]?.[lectureId] || {vod: false, test: false, note: ''};
     taskVodCheckbox.checked = lectureProgress.vod;
     taskTestCheckbox.checked = lectureProgress.test;
     noteTextarea.value = lectureProgress.note || '';
 
     openModal();
 
-    // --- НАДЕЖНАЯ ЗАГРУЗКА ДАННЫХ ---
-    try {
-        if (!SCRIPT_URL || SCRIPT_URL.includes("ВАШ_URL")) {
-            throw new Error("URL скрипта Apps Script не был установлен в коде.");
-        }
-        const requestUrl = `${SCRIPT_URL}?subject=${subjectId}&chapter=${lectureId}`;
-        log(`Отправка запроса на: ${requestUrl}`);
 
-        const response = await fetch(requestUrl);
-        log(`Получен ответ со статусом: ${response.status}`);
+// --- ПУБЛИЧНЫЕ ФУНКЦИИ ---
 
-        if (!response.ok) {
-            throw new Error(`Ошибка сети или сервера скрипта (статус: ${response.status}).`);
+    export async function show(key, progressData) {
+        activeModalKey = key;
+        const [subjectId, lectureId] = key.split('-');
+        const subject = SUBJECTS.find(s => s.id === subjectId);
+        if (!subject) {
+            log("Критическая ошибка: не найден предмет с ID:", subjectId);
+            return;
         }
 
-        const data = await response.json();
-        log("Ответ успешно получен и распарсен в JSON:", data);
+        log(`Открытие модального окна для: ${subject.name} - Глава ${lectureId}`);
+        modalTitle.textContent = `${subject.name} - 第${lectureId}章`;
+        modalBody.innerHTML = `<div class="text-center p-8 text-gray-500 dark:text-gray-400">読み込み中...</div>`;
 
-        // Проверка на ошибку, которую мог вернуть сам скрипт
-        if (data.error) {
-            throw new Error(`Ошибка от Apps Script: ${data.details || data.error}`);
+        const lectureProgress = progressData[subjectId]?.[lectureId] || {vod: false, test: false, note: ''};
+        taskVodCheckbox.checked = lectureProgress.vod;
+        taskTestCheckbox.checked = lectureProgress.test;
+        noteTextarea.value = lectureProgress.note || '';
+
+        openModal();
+
+        // --- НАДЕЖНАЯ ЗАГРУЗКА ДАННЫХ ---
+        try {
+            // Проверяем, что SCRIPT_URL был получен
+            if (!SCRIPT_URL) {
+                // Пытаемся получить его снова
+                await fetchConfig();
+                if (!SCRIPT_URL) {
+                    throw new Error("Не удалось получить конфигурацию CMS с сервера.");
+                }
+            }
+
+            const requestUrl = `${SCRIPT_URL}?subject=${subjectId}&chapter=${lectureId}`;
+            log(`Отправка запроса на: ${requestUrl}`);
+
+            const response = await fetch(requestUrl);
+            log(`Получен ответ со статусом: ${response.status}`);
+
+            if (!response.ok) {
+                throw new Error(`Ошибка сети или сервера скрипта (статус: ${response.status}).`);
+            }
+
+            const data = await response.json();
+            log("Ответ успешно получен и распарсен в JSON:", data);
+
+            if (data.error) {
+                throw new Error(`Ошибка от Apps Script: ${data.details || data.error}`);
+            }
+
+            renderModalContent(data);
+            log("Контент успешно отображен.");
+
+        } catch (error) {
+            log("КРИТИЧЕСКАЯ ОШИБКА при загрузке материалов:", error);
+            renderError(error.message);
         }
-
-        renderModalContent(data);
-        log("Контент успешно отображен.");
-
-    } catch (error) {
-        log("КРИТИЧЕСКАЯ ОШИБКА при загрузке материалов:", error);
-        renderError(error.message); // Показываем ошибку пользователю
     }
-}
 
-export function init(onTaskChange) {
-    handleTaskChangeCallback = onTaskChange;
-    // ... (обработчики событий остаются без изменений)
-    modalOverlay?.addEventListener('click', closeModal);
-    closeXButton?.addEventListener('click', closeModal);
-    taskVodCheckbox?.addEventListener('change', () => {
-        if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'vod');
-    });
-    taskTestCheckbox?.addEventListener('change', () => {
-        if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'test');
-    });
+// Новая функция для получения SCRIPT_URL с нашего бэкенда
+    async function fetchConfig() {
+        try {
+            const response = await fetch('/api/config');
+            if (!response.ok) {
+                throw new Error('Не удалось получить конфигурацию с сервера.');
+            }
+            const config = await response.json();
+            if (config.cms_link) {
+                SCRIPT_URL = config.cms_link;
+                log("Конфигурация CMS успешно загружена.");
+            } else {
+                throw new Error('Ссылка на CMS отсутствует в ответе сервера.');
+            }
+        } catch (error) {
+            console.error("[Modal FATAL] Ошибка загрузки конфигурации CMS:", error);
+            SCRIPT_URL = null;
+        }
+    }
 
-    let noteTimeout;
-    noteTextarea?.addEventListener('input', (e) => {
-        clearTimeout(noteTimeout);
-        noteTimeout = setTimeout(() => {
-            if(activeModalKey) handleTaskChangeCallback(activeModalKey, 'note', e.target.value);
-        }, 500);
-    });
+// Инициализация модуля
+    export async function init(onTaskChange) {
+        // Инициализируем переменные DOM только когда страница загружена
+        modalOverlay = document.getElementById('modal-overlay');
+        modalContent = document.getElementById('modal-content');
+        modalTitle = document.getElementById('modal-title');
+        modalBody = document.getElementById('modal-body');
+        taskVodCheckbox = document.getElementById('task-vod');
+        taskTestCheckbox = document.getElementById('task-test');
+        noteTextarea = document.getElementById('note-textarea');
+        closeXButton = document.getElementById('modal-close-x');
+
+        handleTaskChangeCallback = onTaskChange;
+
+        // Загружаем конфигурацию при инициализации
+        await fetchConfig();
+
+        modalOverlay?.addEventListener('click', closeModal);
+        closeXButton?.addEventListener('click', closeModal);
+        taskVodCheckbox?.addEventListener('change', () => {
+            if (activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'vod');
+        });
+        taskTestCheckbox?.addEventListener('change', () => {
+            if (activeModalKey) handleTaskChangeCallback(activeModalKey, 'task', 'test');
+        });
+
+        let noteTimeout;
+        noteTextarea?.addEventListener('input', (e) => {
+            clearTimeout(noteTimeout);
+            noteTimeout = setTimeout(() => {
+                if (activeModalKey) handleTaskChangeCallback(activeModalKey, 'note', e.target.value);
+            }, 500);
+        });
+    }
 }

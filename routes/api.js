@@ -8,6 +8,15 @@ const { registerLimiter, loginLimiter } = require('../middleware/security');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
+// НОВЫЙ МАРШРУТ: Передача конфигурации на клиент
+router.get('/config', (req, res) => {
+    if (process.env.CMS_LINK) {
+        res.json({ cms_link: process.env.CMS_LINK });
+    } else {
+        res.status(500).json({ error: 'Переменная CMS_LINK не установлена на сервере.' });
+    }
+});
+
 // Register
 router.post('/register', registerLimiter, async (req, res) => {
     const { username, password, deviceId } = req.body;
