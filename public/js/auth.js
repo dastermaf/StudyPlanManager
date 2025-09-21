@@ -25,23 +25,19 @@ export function init(onLogin, onLogout) {
     const loginContainer = document.getElementById('login-form-container');
     const registerContainer = document.getElementById('register-form-container');
 
-    if (showRegisterLink) {
+    if (showRegisterLink && loginContainer && registerContainer) {
         showRegisterLink.addEventListener('click', (e) => {
             e.preventDefault();
-            if (loginContainer && registerContainer) {
-                loginContainer.classList.add('hidden');
-                registerContainer.classList.remove('hidden');
-            }
+            loginContainer.classList.add('hidden');
+            registerContainer.classList.remove('hidden');
         });
     }
 
-    if (showLoginLink) {
+    if (showLoginLink && registerContainer && loginContainer) {
         showLoginLink.addEventListener('click', (e) => {
             e.preventDefault();
-            if (registerContainer && loginContainer) {
-                registerContainer.classList.add('hidden');
-                loginContainer.classList.remove('hidden');
-            }
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
         });
     }
 
