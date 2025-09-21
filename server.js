@@ -35,8 +35,16 @@ const loginLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// --- Middleware ---
 app.use(cors());
 app.use(express.json({limit: '2mb'}));
+
+// ИСПРАВЛЕНИЕ: Удаляем заголовок Content-Security-Policy, чтобы разрешить загрузку ресурсов
+app.use((req, res, next) => {
+    res.removeHeader('Content-Security-Policy');
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 console.log("LOG: server.js: Middleware настроены.");
 
@@ -185,6 +193,18 @@ app.post('/api/progress', authenticateToken, async (req, res) => {
     }
 });
 
+// --- Маршруты для HTML страниц ---
+
+// ИСПРАВЛЕНИЕ: Добавляем маршрут для корневого URL, который отдает страницу входа
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'layout', 'login.html'));
+});
+
+// ИСПРАВЛЕНИЕ: Добавляем маршрут для главной страницы приложения
+app.get('/app', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'layout', 'index.html'));
+});
+
 
 const initializeDatabase = async () => {
     console.log("LOG: server.js: initializeDatabase() - Начало инициализации базы данных.");
@@ -212,7 +232,7 @@ const initializeDatabase = async () => {
         console.log('LOG: server.js: Таблица "device_registrations" готова.');
 
         const res = await client.query(`
-            SELECT data_type FROM information_schema.columns 
+            SELECT data_type FROM information_schema.columns
             WHERE table_name='progress' AND column_name='data';
         `);
 
@@ -244,4 +264,3 @@ app.listen(port, () => {
     console.log(`サーバーが http://localhost:${port} で起動しました。`);
     initializeDatabase();
 });
-
