@@ -10,7 +10,7 @@ async function request(endpoint, options = {}) {
 
     if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-            window.location.href = '/';
+            // Не перенаправляем здесь, пусть вызывающая функция решает, что делать
         }
         const errorData = await response.json().catch(() => ({ error: 'エラー応答の読み取りに失敗しました' }));
         throw new Error(errorData.error || `HTTPエラー！ステータス: ${response.status}`);
@@ -27,6 +27,14 @@ export function register(username, password, deviceId) {
     return request('/api/register', {
         method: 'POST',
         body: JSON.stringify({ username, password, deviceId }),
+    });
+}
+
+// ДОБАВЛЕНА НЕДОСТАЮЩАЯ ФУНКЦИЯ
+export function login(username, password) {
+    return request('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
     });
 }
 

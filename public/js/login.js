@@ -12,10 +12,14 @@ function getDeviceId() {
 }
 
 function initialize() {
-    if (auth.getUser()) {
-        window.location.href = '/app';
-        return;
-    }
+    // Проверяем, есть ли уже сессия
+    api.getCurrentUser().then(user => {
+        if (user) {
+            window.location.href = '/app';
+        }
+    }).catch(() => {
+        // Если сессии нет, остаемся на странице
+    });
 
     const savedTheme = localStorage.getItem('theme') || 'light';
     theme.applyTheme(savedTheme);
@@ -55,13 +59,14 @@ function initialize() {
         }
     });
 
+    // ИЗМЕНЕН ОБРАБОТЧИК
     loginForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Предотвращаем стандартную отправку формы
         const username = e.target.elements.username.value;
         const password = e.target.elements.password.value;
         try {
-            const data = await api.login(username, password);
-            sessionStorage.setItem('accessToken', data.accessToken);
+            await api.login(username, password);
+            // Сервер установил cookie, теперь перенаправляем вручную
             window.location.href = '/app';
         } catch (error) {
             alert(`ログインエラー: ${error.message}`);

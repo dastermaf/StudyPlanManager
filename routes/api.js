@@ -51,13 +51,13 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 });
 
-// Login
+// Login (ИЗМЕНЕНО: Возвращает JSON вместо редиректа)
 router.post('/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
     try {
         const { rows } = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
         if (rows.length === 0) {
-            return res.status(401).send("ユーザー名またはパスワードが正しくありません。");
+            return res.status(401).json({ error: "ユーザー名またはパスワードが正しくありません。" });
         }
         const user = rows[0];
         if (await bcrypt.compare(password, user.password)) {
@@ -65,14 +65,14 @@ router.post('/login', loginLimiter, async (req, res) => {
             res.cookie('accessToken', accessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7日間
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
             });
-            res.redirect('/app');
+            res.json({ success: true, message: 'ログインに成功しました。' }); // <--- ИЗМЕНЕНИЕ ЗДЕСЬ
         } else {
-            res.status(401).send("ユーザー名またはパスワードが正しくありません。");
+            res.status(401).json({ error: "ユーザー名またはパスワードが正しくありません。" });
         }
     } catch (error) {
-        res.status(500).send("サーバーエラーが発生しました。");
+        res.status(500).json({ error: "サーバーエラーが発生しました。" });
     }
 });
 
@@ -109,7 +109,7 @@ router.post('/progress', authenticateToken, async (req, res) => {
         }
         await pool.query(
             `INSERT INTO progress (user_id, data) VALUES ($1, $2)
-             ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = CURRENT_TIMESTAMP`,
+                ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = CURRENT_TIMESTAMP`,
             [req.user.id, progressData]
         );
         res.status(200).json({ success: true, message: '進捗が保存されました。' });
