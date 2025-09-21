@@ -1,0 +1,5 @@
+[http.headers]
+"Content-Security-Policy" = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self' https://fonts.gstatic.com;"
+
+[deploy]
+startCommand = "node server.js"
