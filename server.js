@@ -19,42 +19,22 @@ console.log("LOG: server.js: Запуск сервера...");
 // リバースプロксиの背後で動作させるための設定
 app.set('trust proxy', 1);
 
-// --- ОКОНЧАТЕЛЬНО ИСПРАВЛЕННАЯ ПОЛИТИКА CSP С ИСПОЛЬЗОВАНИЕМ ХЭШЕЙ ---
+// --- セキュリティと互換性を両立させる最終的なCSP設定 ---
 app.use(
     helmet.contentSecurityPolicy({
         directives: {
+            // デフォルトでは、自分自身のドメインからのリソースのみを許可
             defaultSrc: ["'self'"],
-            scriptSrc: [
-                "'self'",
-                "https://cdn.jsdelivr.net",
-                // Хэш для инлайн-скрипта, взятый из вашей ошибки
-                "'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM='"
-            ],
-            styleSrc: [
-                "'self'",
-                "https://fonts.googleapis.com",
-                // Хэш для инлайн-стиля, взятый из вашей ошибки
-                "'sha256-+OsIn6RhyCZCUkkvtHxFtP0kU3CGdGeLjDd9Fzqdl3o='",
-                // Дополнительно разрешаем 'unsafe-inline' для стилей, так как Tailwind может его требовать
-                "'unsafe-inline'"
-            ],
-            fontSrc: [
-                "'self'",
-                "https://fonts.gstatic.com"
-            ],
-            connectSrc: [
-                "'self'",
-                "https://script.google.com",
-                "https://script.googleusercontent.com"
-            ],
-            // Явно разрешаем загрузку иконок (favicon) и других изображений
-            imgSrc: [
-                "'self'",
-                "data:",
-                "https:" // Разрешает загрузку с любого HTTPS источника
-            ],
-            frameSrc: ["'self'"],
-            objectSrc: ["'none'"],
+            // スクリプトは自分自身のドメインと信頼できるCDNから許可
+            scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+            // スタイルシートは自分自身のドメイン、Google Fonts、インラインスタイルを許可
+            styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+            // 画像は自分自身のドメイン、データURI、任意のHTTPSソースから許可
+            imgSrc: ["'self'", "data:", "https:"],
+            // 接続先は自分自身のドメインとGoogle Apps Scriptを許可
+            connectSrc: ["'self'", "https://script.google.com", "https://script.googleusercontent.com"],
+            // フォントは自分自身のドメインとGoogle Fontsから許可
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
         },
     })
 );
