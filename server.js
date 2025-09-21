@@ -17,16 +17,41 @@ const port = process.env.PORT || 3000;
 console.log("LOG: server.js: Запуск сервера...");
 app.set('trust proxy', 1);
 
+// --- 修正されたCSP設定 ---
 app.use(
     helmet.contentSecurityPolicy({
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "'unsafe-inline'"], // Добавляем 'unsafe-inline' для совместимости с расширениями
-            styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"], // Добавляем 'unsafe-inline'
-            fontSrc: ["fonts.gstatic.com"],
-            connectSrc: ["'self'", "https://script.google.com", "https://script.googleusercontent.com"],
-            imgSrc: ["'self'", "data:", "https:"],
+            scriptSrc: [
+                "'self'",
+                "https://cdn.jsdelivr.net",
+                // インラインスクリプトと、Chart.jsなどのライブラリが必要とするevalを許可
+                "'unsafe-inline'",
+                "'unsafe-eval'"
+            ],
+            styleSrc: [
+                "'self'",
+                "https://fonts.googleapis.com",
+                // インラインスタイルを許可
+                "'unsafe-inline'"
+            ],
+            fontSrc: [
+                "'self'",
+                "fonts.gstatic.com"
+            ],
+            connectSrc: [
+                "'self'",
+                "https://script.google.com",
+                "https://script.googleusercontent.com"
+            ],
+            imgSrc: [
+                "'self'",
+                "data:",
+                "https:"
+            ],
             frameSrc: ["'self'"],
+            // 互換性のために object-src を設定
+            objectSrc: ["'none'"],
         },
     })
 );
