@@ -16,7 +16,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 console.log("LOG: server.js: Запуск сервера...");
-// リバースプロキシの背後で動作させるための設定
 app.set('trust proxy', 1);
 
 // --- helmetのCSP機能のみを無効化 ---
