@@ -1,36 +1,60 @@
 import { courseData } from './courseData.js';
-// ВАЖНО: Удалена некорректная строка "import Chart from '...';", которая вызывала ошибку.
-// Библиотека Chart.js теперь корректно загружается из index.html.
 
 let dashboardChart = null;
 
 export function showAuthContent() {
-    document.getElementById('auth-container').classList.remove('hidden');
-    document.getElementById('main-container').classList.add('hidden');
+    const authContainer = document.getElementById('auth-container');
+    const mainContainer = document.getElementById('main-container');
+
+    // ИСПРАВЛЕНИЕ: Проверяем, существует ли элемент, перед изменением класса
+    if (authContainer) authContainer.classList.remove('hidden');
+    if (mainContainer) mainContainer.classList.add('hidden');
 }
 
 export function showMainContent(username) {
-    document.getElementById('auth-container').classList.add('hidden');
-    document.getElementById('main-container').classList.remove('hidden');
-    document.getElementById('username-display').textContent = username;
+    const authContainer = document.getElementById('auth-container');
+    const mainContainer = document.getElementById('main-container');
+    const usernameDisplay = document.getElementById('username-display');
+
+    // ИСПРАВЛЕНИЕ: Проверяем, существует ли элемент, перед изменением класса
+    if (authContainer) authContainer.classList.add('hidden');
+    if (mainContainer) mainContainer.classList.remove('hidden');
+    if (usernameDisplay) usernameDisplay.textContent = username;
 }
 
 export function renderUI(progress, onLectureClick, onNoteChange) {
     const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = '';
+    if (!mainContent) return; // Выходим, если не на главной странице
+    mainContent.innerHTML = ''; // Очищаем содержимое перед рендерингом
+
+    // Добавляем контейнер для дашборда
+    const dashboardElement = document.createElement('div');
+    dashboardElement.className = 'bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8';
+    dashboardElement.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">Общий прогресс</h2>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
+            <div id="overall-progress-bar" class="bg-indigo-600 h-4 rounded-full transition-all duration-500" style="width: 0%;"></div>
+        </div>
+        <p id="overall-progress-text" class="text-right font-bold text-lg text-indigo-600 dark:text-indigo-400">0%</p>
+        <div class="mt-6 h-64 md:h-80 relative">
+            <canvas id="progress-chart"></canvas>
+        </div>
+    `;
+    mainContent.appendChild(dashboardElement);
+
 
     Object.keys(courseData).forEach(courseId => {
         const course = courseData[courseId];
         const courseProgress = progress.lectures?.[courseId] || {};
 
         const courseElement = document.createElement('div');
-        courseElement.className = 'bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md';
+        courseElement.className = 'bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6'; // Добавлен mb-6
         courseElement.innerHTML = `
             <h3 class="text-xl font-bold mb-2 text-gray-800 dark:text-gray-200">${course.name}</h3>
             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
                 <div id="progress-${courseId}" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
             </div>
-            <div id="lectures-${courseId}" class="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-15 gap-2"></div>
+            <div id="lectures-${courseId}" class="grid grid-cols-5 sm:grid-cols-10 lg:grid-cols-15 gap-2"></div>
         `;
         mainContent.appendChild(courseElement);
 
@@ -38,7 +62,7 @@ export function renderUI(progress, onLectureClick, onNoteChange) {
         for (let i = 1; i <= course.lectures; i++) {
             const lectureState = courseProgress[i] || { vod: false, test: false, note: '' };
             const lectureButton = document.createElement('button');
-            lectureButton.className = `lecture-btn p-2 rounded text-white font-bold transition-colors duration-300`;
+            lectureButton.className = `lecture-btn p-2 rounded text-white font-bold transition-colors duration-300 w-10 h-10 flex items-center justify-center`;
             lectureButton.textContent = i;
             lectureButton.dataset.courseId = courseId;
             lectureButton.dataset.lectureId = i;
@@ -66,6 +90,11 @@ function showLectureModal(courseId, lectureId, lectureState, onLectureClick, onN
     testCheckbox.checked = lectureState.test;
     noteTextarea.value = lectureState.note || '';
 
+    // Удаляем старые обработчики, чтобы избежать дублирования
+    vodCheckbox.onchange = null;
+    testCheckbox.onchange = null;
+    noteTextarea.oninput = null;
+
     const handleVodChange = () => onLectureClick(courseId, lectureId, 'vod');
     const handleTestChange = () => onLectureClick(courseId, lectureId, 'test');
 
@@ -83,9 +112,6 @@ function showLectureModal(courseId, lectureId, lectureState, onLectureClick, onN
 
     const closeModal = () => {
         modal.classList.add('hidden');
-        vodCheckbox.onchange = null;
-        testCheckbox.onchange = null;
-        noteTextarea.oninput = null;
     };
 
     document.getElementById('close-modal-btn').onclick = closeModal;
@@ -102,13 +128,16 @@ export function updateLectureState(courseId, lectureId, lectureState) {
     if (!lectureButton) return;
 
     const { vod, test } = lectureState;
+    let colorClasses = '';
     if (vod && test) {
-        lectureButton.className = lectureButton.className.replace(/bg-\S+/g, 'bg-green-600 hover:bg-green-700');
+        colorClasses = 'bg-green-600 hover:bg-green-700';
     } else if (vod || test) {
-        lectureButton.className = lectureButton.className.replace(/bg-\S+/g, 'bg-yellow-500 hover:bg-yellow-600');
+        colorClasses = 'bg-yellow-500 hover:bg-yellow-600';
     } else {
-        lectureButton.className = lectureButton.className.replace(/bg-\S+/g, 'bg-gray-500 hover:bg-gray-600');
+        colorClasses = 'bg-gray-500 hover:bg-gray-600';
     }
+    // Заменяем только классы цвета, сохраняя остальные
+    lectureButton.className = lectureButton.className.replace(/bg-\S+/g, '').replace(/hover:bg-\S+/g, '') + ' ' + colorClasses;
 }
 
 export function updateCourseProgress(courseId, courseProgress) {
@@ -123,6 +152,15 @@ export function updateCourseProgress(courseId, courseProgress) {
 
 
 export function updateDashboard(allLecturesProgress) {
+    const overallProgressBar = document.getElementById('overall-progress-bar');
+    const overallProgressText = document.getElementById('overall-progress-text');
+    const chartCtx = document.getElementById('progress-chart')?.getContext('2d');
+
+    if (!overallProgressBar || !overallProgressText || !chartCtx) {
+        console.warn("LOG: ui.js: Элементы дашборда не найдены, обновление отменено.");
+        return;
+    }
+
     const totalLectures = Object.values(courseData).reduce((sum, course) => sum + course.lectures, 0);
     let completedLectures = 0;
     let partiallyCompletedLectures = 0;
@@ -142,17 +180,15 @@ export function updateDashboard(allLecturesProgress) {
     const uncompletedLectures = totalLectures - completedLectures - partiallyCompletedLectures;
 
     const percentage = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
-    document.getElementById('overall-progress-bar').style.width = `${percentage}%`;
-    document.getElementById('overall-progress-text').textContent = `${percentage.toFixed(1)}%`;
+    overallProgressBar.style.width = `${percentage}%`;
+    overallProgressText.textContent = `${percentage.toFixed(1)}%`;
 
-    const ctx = document.getElementById('progress-chart').getContext('2d');
 
     if(dashboardChart) {
         dashboardChart.destroy();
     }
 
-    // Используем глобальный объект Chart, который доступен благодаря тегу <script> в index.html
-    dashboardChart = new Chart(ctx, {
+    dashboardChart = new Chart(chartCtx, {
         type: 'doughnut',
         data: {
             labels: ['完了', '進行中', '未完了'],
@@ -163,7 +199,7 @@ export function updateDashboard(allLecturesProgress) {
                     '#f59e0b', // amber-500
                     '#6b7280'  // gray-500
                 ],
-                borderColor: '#1f2937', // gray-800
+                borderColor: document.body.classList.contains('dark') ? '#1f2937' : '#ffffff',
                 borderWidth: 2
             }]
         },
@@ -179,6 +215,14 @@ export function updateDashboard(allLecturesProgress) {
                         font: {
                             size: 14
                         }
+                    }
+                },
+                tooltip: {
+                    bodyFont: {
+                        size: 14
+                    },
+                    titleFont: {
+                        size: 16
                     }
                 }
             }
