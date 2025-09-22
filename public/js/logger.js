@@ -76,16 +76,32 @@
   console.warn = (msg, ...args) => { send('warn', msg, args); };
   console.error = (msg, ...args) => { send('error', msg, args); };
 
-  // Capture uncaught errors and unhandled promise rejections
+  // Helper: ignore known noisy extension errors
+  function isIgnorableErrorText(text){
+    if (!text) return false;
+    const s = String(text);
+    return s.includes('Could not establish connection. Receiving end does not exist');
+  }
+
+  // Capture uncaught errors and unhandled promise rejections (and prevent default console output)
   window.addEventListener('error', (event) => {
     try {
       const err = event.error || event.message;
-      send('error', 'uncaught_error', [err]);
+      const txt = typeof err === 'string' ? err : (err && (err.message || err.toString())) || '';
+      if (!isIgnorableErrorText(txt)) {
+        send('error', 'uncaught_error', [err]);
+      }
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
     } catch {}
   });
   window.addEventListener('unhandledrejection', (event) => {
     try {
-      send('error', 'unhandled_rejection', [event.reason]);
+      const reason = event.reason;
+      const txt = typeof reason === 'string' ? reason : (reason && (reason.message || reason.toString())) || '';
+      if (!isIgnorableErrorText(txt)) {
+        send('error', 'unhandled_rejection', [reason]);
+      }
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
     } catch {}
   });
 

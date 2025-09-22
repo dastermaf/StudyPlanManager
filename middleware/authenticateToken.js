@@ -1,21 +1,24 @@
 const jwt = require('jsonwebtoken');
+const logger = require('../logger');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
 const authenticateToken = (req, res, next) => {
     const token = req.cookies.accessToken;
 
     if (token == null) {
-        console.log("LOG: authenticateToken: トークンが見つかりません。ログインページにリダイレクトします。");
-        return res.redirect('/');
+        // For API routes return 401 so client can redirect; avoid noisy logs
+        return res.sendStatus(401);
     }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            console.log("LOG: authenticateToken: トークンの検証エラー。アクセスを禁止します(403)。", err.message);
+            // Do not spam logs; only warn with minimal context
+            logger.debug('authenticateToken: token verification failed', { src: 'authenticateToken', ip: req.ip });
             return res.sendStatus(403);
         }
         req.user = user;
-        console.log("LOG: authenticateToken: トークンがユーザー '" + user.username + "' のために検証されました。");
+        // Reduce noise: debug level only
+        logger.debug(`authenticateToken: verified for user ${user.username}`, { src: 'authenticateToken' });
         next();
     });
 };
