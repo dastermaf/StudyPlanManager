@@ -6,17 +6,18 @@ const helmet = require('helmet');
 const { initializeDatabase } = require('./db');
 const apiRoutes = require('./routes/api');
 const pageRoutes = require('./routes/pages');
+const logger = require('./logger');
 
 // Проверка безопасности JWT_SECRET
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-default-jwt-secret-key-for-planner') {
-    console.error('КРИТИЧЕСКАЯ ОШИБКА: JWT_SECRET не установлен или используется небезопасное значение по умолчанию.');
+    logger.error('КРИТИЧЕСКАЯ ОШИБКА: JWT_SECRET не установлен или используется небезопасное значение по умолчанию.', { src: 'server.js' });
     process.exit(1);
 }
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-console.log("ЛОГ: server.js: Запуск сервера...");
+logger.info('Запуск сервера...', { src: 'server.js' });
 app.set('trust proxy', 1);
 
 app.use(helmet());
@@ -32,12 +33,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', pageRoutes);
 app.use('/api', apiRoutes);
 
-console.log("ЛОГ: server.js: Middleware и маршруты настроены.");
+logger.info('Middleware и маршруты настроены.', { src: 'server.js' });
 
 app.listen(port, () => {
-    console.log(`Сервер запущен на http://localhost:${port}`);
+    logger.info(`Сервер запущен на http://localhost:${port}`, { src: 'server.js' });
     initializeDatabase().catch(err => {
-        console.error("Не удалось инициализировать базу данных:", err);
+        logger.error('Не удалось инициализировать базу данных', { src: 'server.js', err: String(err && err.message || err) });
         process.exit(1);
     });
 });

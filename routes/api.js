@@ -8,6 +8,55 @@ const { registerLimiter, loginLimiter } = require('../middleware/security');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
+// ---- Client log intake endpoint ----
+const serverLogger = require('../logger');
+const logRate = new Map(); // ip -> { count, reset }
+const LOG_LIMIT_PER_MIN = 120;
+
+router.post('/log', (req, res) => {
+    try {
+        const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+        const now = Date.now();
+        const entry = logRate.get(ip) || { count: 0, reset: now + 60_000 };
+        if (now > entry.reset) { entry.count = 0; entry.reset = now + 60_000; }
+        entry.count += 1;
+        logRate.set(ip, entry);
+        if (entry.count > LOG_LIMIT_PER_MIN) {
+            return res.status(429).json({ ok: true }); // silently drop to not spam client
+        }
+
+        const { level = 'info', message = '', args = [], page = '', ts, ua } = req.body || {};
+        const allowed = ['debug', 'info', 'warn', 'error'];
+        const lvl = allowed.includes(level) ? level : 'info';
+
+        // Try to detect user from cookie token (optional)
+        let user = undefined;
+        try {
+            const token = req.cookies?.accessToken;
+            if (token) {
+                const payload = jwt.verify(token, JWT_SECRET);
+                user = { id: payload.id, username: payload.username };
+            }
+        } catch {}
+
+        const ctx = serverLogger.fromRequest(req);
+        const extra = {
+            src: 'client',
+            page,
+            ua: ua || ctx.ua,
+            ip: ctx.ip,
+            user,
+            args: Array.isArray(args) ? args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).slice(0, 10) : undefined,
+            clientTs: ts,
+        };
+        serverLogger[lvl](`client:${lvl} ${typeof message === 'string' ? message : String(message)}`, extra);
+        return res.json({ ok: true });
+    } catch (e) {
+        serverLogger.warn('failed to ingest client log', { src: 'api.log', err: String(e && e.message || e) });
+        return res.json({ ok: true });
+    }
+});
+
 router.get('/config', (req, res) => {
     if (process.env.CMS_LINK) {
         res.json({ cms_link: process.env.CMS_LINK });
