@@ -1,6 +1,13 @@
 const express = require('express');
 const path = require('path');
+const { ensureDbForPages } = require('../middleware/dbHealth');
 const router = express.Router();
+
+// Apply DB health guard for all pages except the error page itself
+router.use((req, res, next) => {
+    if (req.path && req.path.startsWith('/error')) return next();
+    return ensureDbForPages(req, res, next);
+});
 
 // Главный маршрут "/" теперь всегда отдает login.html
 router.get('/', (req, res) => {

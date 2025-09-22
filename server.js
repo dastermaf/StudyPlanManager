@@ -3,7 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
-const { initializeDatabase } = require('./db');
+const { initializeDatabase, markDbDown } = require('./db');
 const apiRoutes = require('./routes/api');
 const pageRoutes = require('./routes/pages');
 const logger = require('./logger');
@@ -39,6 +39,7 @@ app.listen(port, () => {
     logger.info(`Сервер запущен на http://localhost:${port}`, { src: 'server.js' });
     initializeDatabase().catch(err => {
         logger.error('Не удалось инициализировать базу данных', { src: 'server.js', err: String(err && err.message || err) });
-        process.exit(1);
+        // Не завершаем процесс: включаем graceful degradation через страницу ошибок
+        try { markDbDown(err); } catch {}
     });
 });

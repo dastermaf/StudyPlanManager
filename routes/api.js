@@ -4,8 +4,10 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../db');
 const authenticateToken = require('../middleware/authenticateToken');
 const { registerLimiter, loginLimiter } = require('../middleware/security');
+const { ensureDbForApi } = require('../middleware/dbHealth');
 
 const router = express.Router();
+router.use(ensureDbForApi);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
 
 // ---- Client log intake endpoint ----
@@ -135,14 +137,19 @@ router.get('/user', authenticateToken, (req, res) => {
 
 router.get('/progress', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [req.user.id]);
+        const uid = req.user.id;
+        const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [uid]);
         if (result.rows.length > 0) {
-            res.json(result.rows[0].data);
-        } else {
-            res.json({ settings: { theme: 'light' }, lectures: {} });
+            return res.json(result.rows[0].data);
         }
+        // Auto-create default progress if missing
+        const empty = { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
+        await pool.query('INSERT INTO progress (user_id, data) VALUES ($1, $2)', [uid, empty]);
+        res.setHeader('X-Notice', 'DATA_INITIALIZED');
+        return res.status(200).json(empty);
     } catch (error) {
-        res.status(500).json({ error: 'サーバーエラーが発生しました。' });
+        // If table or other schema missing, let client know
+        return res.status(500).json({ error: '進捗データの取得に失敗しました。', code: 'PROGRESS_LOAD_FAILED' });
     }
 });
 
