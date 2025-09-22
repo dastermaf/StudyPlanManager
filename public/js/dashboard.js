@@ -115,8 +115,14 @@ function exportData() {
 
 // --- 初期化 ---
 async function initialize() {
-    const token = sessionStorage.getItem('accessToken');
-    if (!token) {
+    // Проверяем аутентификацию через cookie, запрашивая текущего пользователя
+    try {
+        const user = await api.getCurrentUser();
+        if (!user) {
+            window.location.href = '/';
+            return;
+        }
+    } catch (e) {
         window.location.href = '/';
         return;
     }

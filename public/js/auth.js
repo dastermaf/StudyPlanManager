@@ -2,9 +2,9 @@ import * as api from './api.js';
 
 export async function logout() {
     try {
-        // Просто отправляем запрос, сервер сам сделает перенаправление
-        await fetch('/api/logout', { method: 'POST' });
-        // На всякий случай, если сервер не ответит, перенаправляем вручную
+        // Отправляем запрос на выход; сервер очистит cookie и сделает редирект
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        // На случай, если сервер не выполнит редирект
         window.location.href = '/';
     } catch (error) {
         console.error("ログアウトエラー:", error);
@@ -12,6 +12,7 @@ export async function logout() {
     }
 }
 
-export function getToken() { return null; }
-export function parseJwt(token) { return null; }
-export function getUser() { return null; }
+// Возвращает текущего пользователя через API или выбрасывает ошибку, если не авторизован
+export async function getUser() {
+    return api.getCurrentUser();
+}
