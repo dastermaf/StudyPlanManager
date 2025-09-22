@@ -34,25 +34,25 @@ function renderActivityChart(chartData) {
     });
 }
 
-function renderSubjectsChart(chartData) {
-    const ctx = document.getElementById('subjects-chart').getContext('2d');
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: chartData.labels,
-            datasets: [{
-                label: '完了率',
-                data: chartData.data,
-                backgroundColor: SUBJECT_COLORS,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12 } }
-            }
-        }
+// 科目別進捗リスト（バー表示）
+function renderSubjectsList(labels, data) {
+    const list = document.getElementById('subjects-list');
+    if (!list) return;
+    list.innerHTML = '';
+    labels.forEach((label, i) => {
+        const color = SUBJECT_COLORS[i % SUBJECT_COLORS.length];
+        const val = Math.max(0, Math.min(100, Number(data[i]) || 0));
+        const row = document.createElement('div');
+        row.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${label}</span>
+                <span class="text-xs text-gray-500">${val}%</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                <div class="h-3 rounded-full" style="width:${val}%; background-color:${color}"></div>
+            </div>
+        `;
+        list.appendChild(row);
     });
 }
 
@@ -122,8 +122,7 @@ function processDataForCharts() {
 
     renderActivityChart(activityChartData);
     renderActivitySummary(labels, data);
-    renderSubjectsChart(subjectsChartData);
-    renderSubjectsLegend(subjectLabels, subjectData);
+    renderSubjectsList(subjectLabels, subjectData);
 }
 
 // --- データエクスポート ---
@@ -171,7 +170,7 @@ async function initialize() {
         processDataForCharts();
     } catch (e) {
         console.error("進捗データの読み込みに失敗しました:", e);
-        document.body.innerHTML = `<div class="text-red-500 p-8">データの読み込みに失敗しました。メインページに戻ってください。</div>`;
+        window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
     }
 }
 

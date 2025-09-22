@@ -218,7 +218,31 @@ router.get('/image', authenticateToken, async (req, res) => {
             }
         }
         res.setHeader('X-Upstream-Status', String(lastStatus));
-        return res.status(502).send(`上流からの取得に失敗しました (status: ${lastStatus}). ${lastBody.slice(0, 200)}`);
+        // フォールバック: 壊れた画像の代わりにプレースホルダーSVGを返す（CSP適合・視覚的に崩れない）
+        const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eef2ff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g)"/>
+  <g fill="#6366f1">
+    <circle cx="80" cy="80" r="28" fill="#a5b4fc"/>
+    <rect x="130" y="60" width="240" height="16" rx="8"/>
+    <rect x="130" y="86" width="180" height="12" rx="6" fill="#818cf8"/>
+  </g>
+  <g transform="translate(60,180)" fill="#334155">
+    <rect x="0" y="0" width="680" height="14" rx="7" fill="#c7d2fe"/>
+    <rect x="0" y="26" width="620" height="14" rx="7" fill="#c7d2fe"/>
+    <rect x="0" y="52" width="540" height="14" rx="7" fill="#c7d2fe"/>
+  </g>
+  <text x="50%" y="88%" dominant-baseline="middle" text-anchor="middle" fill="#475569" font-size="14">画像を取得できませんでした (status: ${lastStatus}). オリジナルへのアクセスが制限されている可能性があります。</text>
+</svg>`;
+        res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        return res.status(200).send(svg);
     } catch (err) {
         return res.status(500).send('画像プロキシエラー');
     }

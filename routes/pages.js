@@ -27,4 +27,9 @@ router.get('/about', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'about.html'));
 });
 
+// Страница ошибок
+router.get('/error', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'layout', 'error.html'));
+});
+
 module.exports = router;
