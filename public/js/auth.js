@@ -2,7 +2,9 @@ import * as api from './api.js';
 
 export async function logout() {
     try {
-        await api.logout();
+        // Просто отправляем запрос, сервер сам сделает перенаправление
+        await fetch('/api/logout', { method: 'POST' });
+        // На всякий случай, если сервер не ответит, перенаправляем вручную
         window.location.href = '/';
     } catch (error) {
         console.error("ログアウトエラー:", error);
