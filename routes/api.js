@@ -114,4 +114,47 @@ router.post('/progress', authenticateToken, async (req, res) => {
     }
 });
 
+// 教材CMSへのサーバーサイドプロキシ（CSP回避のため、同一オリジン経由で取得）
+router.get('/materials', authenticateToken, async (req, res) => {
+    try {
+        const subject = (req.query.subject || '').toString();
+        const chapterRaw = (req.query.chapter || '').toString();
+
+        // 入力検証（SSRF対策: 許可された形式のみ）
+        if (!/^[A-Z0-9]{10}$/.test(subject)) {
+            return res.status(400).json({ error: '無効なパラメータ: subject' });
+        }
+        const chapter = parseInt(chapterRaw, 10);
+        if (!Number.isInteger(chapter) || chapter < 1 || chapter > 50) {
+            return res.status(400).json({ error: '無効なパラメータ: chapter' });
+        }
+
+        const baseUrl = process.env.CMS_LINK;
+        if (!baseUrl) {
+            return res.status(500).json({ error: 'CMS_LINK が未設定です。' });
+        }
+
+        const url = `${baseUrl}?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}`;
+
+        // Node.js 18+ のグローバル fetch を想定
+        const upstream = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!upstream.ok) {
+            const text = await upstream.text().catch(() => '');
+            return res.status(502).json({ error: '上流の取得に失敗しました。', status: upstream.status, details: text.slice(0, 300) });
+        }
+
+        // JSONとして返す（もしJSONでなければエラーメッセージを生成）
+        const contentType = upstream.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await upstream.text().catch(() => '');
+            return res.status(502).json({ error: '上流の応答がJSONではありません。', details: text.slice(0, 300) });
+        }
+
+        const data = await upstream.json();
+        return res.json(data);
+    } catch (err) {
+        return res.status(500).json({ error: 'サーバープロキシエラー', details: err.message });
+    }
+});
+
 module.exports = router;

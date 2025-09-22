@@ -219,19 +219,13 @@ async function initialize() {
         console.error("進捗データの読み込みに失敗しました:", e);
     }
 
-    const url = await fetchConfig();
-    if (!url) {
-        renderError(container, "CMSの設定を読み込めませんでした。");
-        return;
-    }
-
     try {
-        const requestUrl = `${url}?subject=${subjectId}&chapter=${chapterNo}`;
-        log(`リクエストを送信します: ${requestUrl}`);
-        const response = await fetch(requestUrl);
+        const requestUrl = `/api/materials?subject=${encodeURIComponent(subjectId)}&chapter=${encodeURIComponent(chapterNo)}`;
+        log(`APIにリクエストを送信します: ${requestUrl}`);
+        const response = await fetch(requestUrl, { credentials: 'include' });
         if (!response.ok) throw new Error(`ネットワークエラー (ステータス: ${response.status})`);
         const data = await response.json();
-        if (data.error) throw new Error(`スクリプトエラー: ${data.details || data.error}`);
+        if (data && data.error && !data.content) throw new Error(`スクリプトエラー: ${data.details || data.error}`);
 
         renderContent(container, data);
         log("コンテンツが正常に表示されました。");
