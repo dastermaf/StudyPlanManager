@@ -53,7 +53,8 @@ function renderContent(container, data) {
                     contentHtml += `<p class="dark:text-gray-300 whitespace-pre-wrap">${item.content_1}</p>`;
                     break;
                 case 'image':
-                    contentHtml += `<div><img src="${item.content_1}" alt="${item.content_2 || '教材画像'}" class="my-2 rounded-lg shadow-md max-w-full h-auto"></div>`;
+                    // CSP対応のため、画像は同一オリジンのプロキシ経由で配信する
+                    contentHtml += `<div><img src="/api/image?url=${encodeURIComponent(item.content_1)}" alt="${item.content_2 || '教材画像'}" class="my-2 rounded-lg shadow-md max-w-full h-auto"></div>`;
                     break;
                 case 'link': case 'video':
                     const icon = item.type === 'video' ? '▶️' : '🔗';

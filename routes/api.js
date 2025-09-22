@@ -157,4 +157,38 @@ router.get('/materials', authenticateToken, async (req, res) => {
     }
 });
 
+// 画像プロキシ（CSP対応のため、同一オリジン経由で取得）
+router.get('/image', authenticateToken, async (req, res) => {
+    try {
+        const raw = (req.query.url || '').toString();
+        if (!raw) {
+            return res.status(400).send('url パラメータが必要です');
+        }
+        let urlObj;
+        try {
+            urlObj = new URL(raw);
+        } catch (e) {
+            return res.status(400).send('無効なURL');
+        }
+        // 許可するホストをホワイトリストで制限（CSP回避目的のため）
+        const allowedHosts = new Set(['lh3.googleusercontent.com']);
+        if (urlObj.protocol !== 'https:' || !allowedHosts.has(urlObj.hostname)) {
+            return res.status(400).send('許可されていないホストです');
+        }
+
+        const upstream = await fetch(urlObj.toString(), { method: 'GET' });
+        if (!upstream.ok) {
+            return res.status(502).send('上流からの取得に失敗しました');
+        }
+
+        const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        const ab = await upstream.arrayBuffer();
+        res.status(200).send(Buffer.from(ab));
+    } catch (err) {
+        res.status(500).send('画像プロキシエラー');
+    }
+});
+
 module.exports = router;
