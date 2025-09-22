@@ -4,6 +4,9 @@ import { SUBJECTS } from './studyPlan.js';
 
 let progress = {};
 
+// グラフの色（科目別）
+const SUBJECT_COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'];
+
 // --- グラフ描画関数 ---
 function renderActivityChart(chartData) {
     const ctx = document.getElementById('activity-chart').getContext('2d');
@@ -40,7 +43,7 @@ function renderSubjectsChart(chartData) {
             datasets: [{
                 label: '完了率',
                 data: chartData.data,
-                backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'],
+                backgroundColor: SUBJECT_COLORS,
             }]
         },
         options: {
@@ -51,6 +54,30 @@ function renderSubjectsChart(chartData) {
             }
         }
     });
+}
+
+// 科目別凡例の描画（Chartスタブでは凡例を自前で描く）
+function renderSubjectsLegend(labels, data) {
+    const legend = document.getElementById('subjects-legend');
+    if (!legend) return;
+    legend.innerHTML = '';
+    labels.forEach((label, i) => {
+        const color = SUBJECT_COLORS[i % SUBJECT_COLORS.length];
+        const val = typeof data[i] === 'number' ? data[i] : 0;
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-2 text-sm';
+        item.innerHTML = `<span class="inline-block w-3 h-3 rounded-full" style="background-color:${color}"></span><span>${label} ${val}%</span>`;
+        legend.appendChild(item);
+    });
+}
+
+// 活動サマリーの描画
+function renderActivitySummary(labels, data) {
+    const box = document.getElementById('activity-summary');
+    if (!box) return;
+    const total = (data || []).reduce((a, b) => a + (Number(b) || 0), 0);
+    const last = (labels && labels.length) ? labels[labels.length - 1] : '—';
+    box.textContent = `直近90日: 合計 ${total} タスク / 最終活動日: ${last}`;
 }
 
 // --- データ処理 ---
@@ -94,7 +121,9 @@ function processDataForCharts() {
     };
 
     renderActivityChart(activityChartData);
+    renderActivitySummary(labels, data);
     renderSubjectsChart(subjectsChartData);
+    renderSubjectsLegend(subjectLabels, subjectData);
 }
 
 // --- データエクスポート ---

@@ -161,47 +161,66 @@ router.get('/materials', authenticateToken, async (req, res) => {
 router.get('/image', authenticateToken, async (req, res) => {
     try {
         const raw = (req.query.url || '').toString();
-        if (!raw) {
-            return res.status(400).send('url パラメータが必要です');
-        }
+        if (!raw) return res.status(400).send('url パラメータが必要です');
+
         let urlObj;
-        try {
-            urlObj = new URL(raw);
-        } catch (e) {
-            return res.status(400).send('無効なURL');
-        }
-        // 許可するホストをホワイトリストで制限（CSP回避目的のため）
-        const isAllowedHost = (hostname) => {
-            return hostname === 'lh3.googleusercontent.com'
-                || /^lh\d+\.googleusercontent\.com$/.test(hostname)
-                || hostname.endsWith('.googleusercontent.com');
-        };
+        try { urlObj = new URL(raw); } catch { return res.status(400).send('無効なURL'); }
+
+        // 許可ホスト（セキュリティ維持）
+        const isAllowedHost = (h) => h === 'lh3.googleusercontent.com'
+            || /^lh\d+\.googleusercontent\.com$/.test(h)
+            || h.endsWith('.googleusercontent.com');
         if (urlObj.protocol !== 'https:' || !isAllowedHost(urlObj.hostname)) {
             return res.status(400).send('許可されていないホストです');
         }
 
-        const upstream = await fetch(urlObj.toString(), {
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
-                'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-                'Accept-Language': 'ja,en;q=0.9',
-                'Referer': 'https://sites.google.com/'
+        // 上流取得: ヘッダのバリエーションを試行（Some Google endpoints require specific headers）
+        const COMMON = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'ja,en;q=0.9',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Dest': 'image',
+            'Connection': 'keep-alive'
+        };
+        const trials = [
+            { // 1st: Google Sites 参照元を付与
+                headers: { ...COMMON, 'Referer': 'https://sites.google.com/', 'Origin': 'https://sites.google.com' }
             },
-            redirect: 'follow'
-        });
-        if (!upstream.ok) {
-            const text = await upstream.text().catch(() => '');
-            return res.status(502).send(`上流からの取得に失敗しました (status: ${upstream.status}). ${text.slice(0,200)}`);
-        }
+            { // 2nd: 参照元なし
+                headers: { ...COMMON }
+            },
+            { // 3rd: 画像オリジンを参照元に
+                headers: { ...COMMON, 'Referer': urlObj.origin + '/', 'Origin': urlObj.origin }
+            }
+        ];
 
-        const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        const ab = await upstream.arrayBuffer();
-        res.status(200).send(Buffer.from(ab));
+        let lastStatus = 0;
+        let lastBody = '';
+        for (const t of trials) {
+            try {
+                const upstream = await fetch(urlObj.toString(), { method: 'GET', headers: t.headers, redirect: 'follow' });
+                if (upstream.ok) {
+                    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+                    res.setHeader('Content-Type', contentType);
+                    res.setHeader('Cache-Control', 'public, max-age=86400');
+                    const ab = await upstream.arrayBuffer();
+                    return res.status(200).send(Buffer.from(ab));
+                } else {
+                    lastStatus = upstream.status;
+                    // 失敗時の本文を短く保持（診断用）
+                    lastBody = await upstream.text().catch(() => '');
+                }
+            } catch (e) {
+                lastStatus = 0;
+                lastBody = String(e && e.message || 'fetch error');
+            }
+        }
+        res.setHeader('X-Upstream-Status', String(lastStatus));
+        return res.status(502).send(`上流からの取得に失敗しました (status: ${lastStatus}). ${lastBody.slice(0, 200)}`);
     } catch (err) {
-        res.status(500).send('画像プロキシエラー');
+        return res.status(500).send('画像プロキシエラー');
     }
 });
 

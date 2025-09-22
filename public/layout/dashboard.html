@@ -31,12 +31,14 @@
             <section class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">学習活動ヒートマップ</h2>
                 <div class="h-64 md:h-80"><canvas id="activity-chart"></canvas></div>
-                <p class="text-xs text-gray-500 mt-2 text-center">過去90日間に完了したタスク（VODまたはテスト）の数</p>
+                <div id="activity-summary" class="text-xs text-gray-500 mt-2 text-center"></div>
+                <p class="text-xs text-gray-500 mt-1 text-center">過去90日間に完了したタスク（VODまたはテスト）の数</p>
             </section>
 
             <section class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">科目別完了率</h2>
                 <div class="h-64 md:h-80"><canvas id="subjects-chart"></canvas></div>
+                <div id="subjects-legend" class="flex flex-wrap gap-3 justify-center mt-3"></div>
                 <p class="text-xs text-gray-500 mt-2 text-center">各科目の完了した章の割合</p>
             </section>
         </main>

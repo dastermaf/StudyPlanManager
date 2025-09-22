@@ -115,6 +115,20 @@ function renderTasks() {
 }
 
 
+function updateChapterProgressUI() {
+    try {
+        const bar = document.getElementById('chapter-progress-bar');
+        const text = document.getElementById('chapter-progress-text');
+        if (!bar || !text) return;
+        const vod = chapterProgress?.vod?.checked ? 1 : 0;
+        const test = chapterProgress?.test?.checked ? 1 : 0;
+        const percent = Math.round(((vod + test) / 2) * 100);
+        bar.style.width = `${percent}%`;
+        bar.textContent = percent > 10 ? `${percent}%` : '';
+        text.textContent = `${percent}%`;
+    } catch {}
+}
+
 function setupProgressTracker() {
     const vodCheckbox = document.getElementById('task-vod');
     const testCheckbox = document.getElementById('task-test');
@@ -128,16 +142,19 @@ function setupProgressTracker() {
     vodCheckbox.checked = chapterProgress.vod.checked;
     testCheckbox.checked = chapterProgress.test.checked;
     noteTextarea.value = chapterProgress.note;
+    updateChapterProgressUI();
 
     vodCheckbox.addEventListener('change', () => {
         chapterProgress.vod.checked = vodCheckbox.checked;
         chapterProgress.vod.timestamp = vodCheckbox.checked ? new Date().toISOString() : null;
         saveProgress();
+        updateChapterProgressUI();
     });
     testCheckbox.addEventListener('change', () => {
         chapterProgress.test.checked = testCheckbox.checked;
         chapterProgress.test.timestamp = testCheckbox.checked ? new Date().toISOString() : null;
         saveProgress();
+        updateChapterProgressUI();
     });
     noteTextarea.addEventListener('input', () => {
         chapterProgress.note = noteTextarea.value;
