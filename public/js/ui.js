@@ -2,6 +2,17 @@ import { SUBJECTS, WEEKLY_NOTES } from './studyPlan.js';
 
 export const WEEKS_COUNT = 15;
 
+// --- 内部状態（進捗参照と保存関数、現在の週） ---
+let progressRef = null; // 参照用（app.jsから受け取る）
+let onSaveProgress = null; // デバウンス保存関数（app.jsから受け取る）
+let currentWeekIdx = 0; // 直近で描画した週
+
+// app.jsから進捗参照と保存関数を受け取り、UIイベントから保存できるようにする
+export function configureProgress(progress, saveCb) {
+    progressRef = progress;
+    onSaveProgress = saveCb;
+}
+
 const MOTIVATIONAL_QUOTES = [
     "「学び続ける者は、常に若い。」- ソクラテス",
     "「今日の小さな一歩が、明日の大きな飛躍になる。」",
@@ -24,6 +35,8 @@ export function showMainContent(username) {
 }
 
 export function renderWeek(weekIndex, progressData) {
+    // 現在の週を保持（ピン変更後の再描画に使用）
+    currentWeekIdx = weekIndex;
     const planContainer = document.getElementById('plan-container');
     const finalPrepContainer = document.getElementById('final-prep-container');
     const weekTitle = document.getElementById('week-title');
@@ -72,7 +85,19 @@ export function renderWeek(weekIndex, progressData) {
             const pinIndicator = isPinned ? `<span title="ピン留めされた科目" class="text-yellow-500 ml-2">★</span>` : '';
 
             let lecturesHtml = '';
+            // 章の並び順を決定：ピン留めがあれば先頭に配置
+            const subjectProgressData = progressData[subject.id] || {};
+            let pinnedChapter = null;
             for (let i = 1; i <= subject.totalLectures; i++) {
+                if (subjectProgressData[i]?.pinned) { pinnedChapter = i; break; }
+            }
+            const order = [];
+            if (pinnedChapter) order.push(pinnedChapter);
+            for (let i = 1; i <= subject.totalLectures; i++) {
+                if (i !== pinnedChapter) order.push(i);
+            }
+
+            for (const i of order) {
                 const chapterProgress = progressData[subject.id]?.[i];
                 const status = getChapterStatus(chapterProgress);
                 const isRecommended = i === currentWeek;
@@ -82,7 +107,16 @@ export function renderWeek(weekIndex, progressData) {
                 else if (status === 'in-progress') lectureClass = 'in-progress';
                 else if (isRecommended) lectureClass = 'recommended';
 
-                lecturesHtml += `<a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>`;
+                const pinned = chapterProgress?.pinned === true;
+                lecturesHtml += `
+                    <div class="flex items-center gap-2">
+                        <a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>
+                        <button type="button" class="pin-chapter-btn text-gray-400 hover:text-yellow-500 transition-colors ${pinned ? 'text-yellow-500' : ''}" data-subject="${subject.id}" data-chapter="${i}" title="この章をピン留め" aria-label="この章をピン留め">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l.588 1.812a1 1 0 00.95.69h1.902c.969 0 1.371 1.24.588 1.81l-1.539 1.118a1 1 0 00-.364 1.118l.588 1.812c.3.921-.755 1.688-1.54 1.118l-1.538-1.118a1 1 0 00-1.176 0l-1.538 1.118c-.784.57-1.838-.197-1.539-1.118l.589-1.812a1 1 0 00-.365-1.118L4.923 7.24c-.783-.57-.38-1.81.588-1.81h1.902a1 1 0 00.95-.69l.586-1.812z" />
+                            </svg>
+                        </button>
+                    </div>`;
             }
 
             let noteHtml = hasImportantNote ? `<div class="important-note p-3 mt-4 text-sm rounded-r-lg"><p class="whitespace-pre-line">${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
@@ -104,6 +138,49 @@ export function renderWeek(weekIndex, progressData) {
 
     updateWeeklyProgress(weekIndex, progressData);
     updateNavButtons(weekIndex);
+}
+
+// --- ピンボタンのイベント処理（イベントデリゲーション） ---
+// クリック時に科目内のピンを排他制御し、保存後に再描画する
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('button.pin-chapter-btn');
+        if (!btn) return;
+        if (!progressRef || !onSaveProgress) return;
+        const subjectId = btn.dataset.subject;
+        const chapterNo = parseInt(btn.dataset.chapter, 10);
+        const subjectDef = SUBJECTS.find(s => s.id === subjectId);
+        if (!subjectDef) return;
+        if (!progressRef.lectures) progressRef.lectures = {};
+        if (!progressRef.lectures[subjectId]) progressRef.lectures[subjectId] = {};
+
+        // 章データの初期化
+        for (let i = 1; i <= subjectDef.totalLectures; i++) {
+            if (!progressRef.lectures[subjectId][i] || typeof progressRef.lectures[subjectId][i].vod !== 'object') {
+                progressRef.lectures[subjectId][i] = {
+                    vod: { checked: false, timestamp: null },
+                    test: { checked: false, timestamp: null },
+                    note: '',
+                    tasks: [],
+                    pinned: false
+                };
+            }
+        }
+
+        const alreadyPinned = progressRef.lectures[subjectId][chapterNo].pinned === true;
+        // まず全章のピンを外す
+        for (let i = 1; i <= subjectDef.totalLectures; i++) {
+            progressRef.lectures[subjectId][i].pinned = false;
+        }
+        // 既にピン済みなら全て外した状態、未ピンならこの章をピン
+        if (!alreadyPinned) {
+            progressRef.lectures[subjectId][chapterNo].pinned = true;
+        }
+
+        // 保存して再描画
+        try { onSaveProgress && onSaveProgress(); } catch {}
+        try { renderWeek(currentWeekIdx, progressRef.lectures); } catch {}
+    });
 }
 
 export function updateWeeklyProgress(weekIndex, progressData) {
@@ -168,13 +245,31 @@ export function updateOverallProgress(progressData) {
 }
 
 export function initNavigation(onWeekChange) {
+    // 週移動ボタンの視認性改善（アイコンとARIAラベル設定）
+    const prev = document.getElementById('prev-week');
+    const next = document.getElementById('next-week');
+    if (prev) {
+        prev.setAttribute('aria-label', '前の週');
+        prev.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L8.414 10l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>';
+    }
+    if (next) {
+        next.setAttribute('aria-label', '次の週');
+        next.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 4.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 11-1.414-1.414L11.586 10 7.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>';
+    }
     document.getElementById('prev-week')?.addEventListener('click', () => onWeekChange(-1));
     document.getElementById('next-week')?.addEventListener('click', () => onWeekChange(1));
 }
 
 function updateNavButtons(currentWeekIndex) {
+    // ボタンの無効化状態に応じて透明度も調整し、視覚的に分かりやすくする
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
-    if(prevWeekBtn) prevWeekBtn.disabled = currentWeekIndex === 0;
-    if(nextWeekBtn) nextWeekBtn.disabled = currentWeekIndex >= WEEKS_COUNT;
+    if(prevWeekBtn) {
+        prevWeekBtn.disabled = currentWeekIndex === 0;
+        prevWeekBtn.classList.toggle('opacity-60', prevWeekBtn.disabled);
+    }
+    if(nextWeekBtn) {
+        nextWeekBtn.disabled = currentWeekIndex >= WEEKS_COUNT;
+        nextWeekBtn.classList.toggle('opacity-60', nextWeekBtn.disabled);
+    }
 }

@@ -21,6 +21,7 @@ async function initialize() {
         let saveTimeout;
 
         function saveProgress() {
+            // UI側（ui.js）からも呼び出せるようにするためにconfigureProgressで渡す
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
                 try {
@@ -53,6 +54,9 @@ async function initialize() {
         document.getElementById('logout-button')?.addEventListener('click', auth.logout);
         theme.init(saveSettings);
         ui.initNavigation(handleWeekChange);
+
+        // UIに進捗参照と保存関数を渡す（ピン留め操作から保存するため）
+        ui.configureProgress(progress, saveProgress);
 
         ui.showMainContent(user.username);
         theme.applyTheme(progress.settings?.theme || 'light');
