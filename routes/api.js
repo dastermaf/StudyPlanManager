@@ -171,14 +171,28 @@ router.get('/image', authenticateToken, async (req, res) => {
             return res.status(400).send('無効なURL');
         }
         // 許可するホストをホワイトリストで制限（CSP回避目的のため）
-        const allowedHosts = new Set(['lh3.googleusercontent.com']);
-        if (urlObj.protocol !== 'https:' || !allowedHosts.has(urlObj.hostname)) {
+        const isAllowedHost = (hostname) => {
+            return hostname === 'lh3.googleusercontent.com'
+                || /^lh\d+\.googleusercontent\.com$/.test(hostname)
+                || hostname.endsWith('.googleusercontent.com');
+        };
+        if (urlObj.protocol !== 'https:' || !isAllowedHost(urlObj.hostname)) {
             return res.status(400).send('許可されていないホストです');
         }
 
-        const upstream = await fetch(urlObj.toString(), { method: 'GET' });
+        const upstream = await fetch(urlObj.toString(), {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+                'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+                'Accept-Language': 'ja,en;q=0.9',
+                'Referer': 'https://sites.google.com/'
+            },
+            redirect: 'follow'
+        });
         if (!upstream.ok) {
-            return res.status(502).send('上流からの取得に失敗しました');
+            const text = await upstream.text().catch(() => '');
+            return res.status(502).send(`上流からの取得に失敗しました (status: ${upstream.status}). ${text.slice(0,200)}`);
         }
 
         const contentType = upstream.headers.get('content-type') || 'application/octet-stream';

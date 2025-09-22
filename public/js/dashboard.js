@@ -77,17 +77,20 @@ function processDataForCharts() {
     SUBJECTS.forEach(subject => {
         const lectures = progress.lectures?.[subject.id] || {};
         const completed = Object.values(lectures).filter(l => l.vod?.checked && l.test?.checked).length;
-        subjectProgress[subject.name] = (completed / subject.totalLectures) * 100;
+        const total = subject.totalLectures || 0;
+        const perc = total > 0 ? (completed / total) * 100 : 0;
+        subjectProgress[subject.name] = Number(perc.toFixed(1));
     });
 
-    const activityChartData = {
-        labels: Object.keys(activity),
-        data: Object.values(activity)
-    };
+    const labels = Object.keys(activity).sort();
+    const data = labels.map(d => activity[d]);
+    const activityChartData = { labels, data };
 
+    const subjectLabels = Object.keys(subjectProgress);
+    const subjectData = subjectLabels.map(k => subjectProgress[k]);
     const subjectsChartData = {
-        labels: Object.keys(subjectProgress),
-        data: Object.values(subjectProgress)
+        labels: subjectLabels,
+        data: subjectData
     };
 
     renderActivityChart(activityChartData);
