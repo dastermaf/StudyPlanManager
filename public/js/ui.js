@@ -51,10 +51,8 @@ export function renderWeek(weekIndex, progressData) {
     planContainer.innerHTML = '';
 
     const sortedSubjects = [...SUBJECTS].sort((a, b) => {
-        const progressA = progressData[a.id] || {};
-        const isAPinned = Object.values(progressA).some(ch => ch.pinned);
-        const progressB = progressData[b.id] || {};
-        const isBPinned = Object.values(progressB).some(ch => ch.pinned);
+        const isAPinned = (progressData[a.id] || {})._subjectPinned === true;
+        const isBPinned = (progressData[b.id] || {})._subjectPinned === true;
         if (isAPinned && !isBPinned) return -1;
         if (!isAPinned && isBPinned) return 1;
         return 0;
@@ -78,26 +76,13 @@ export function renderWeek(weekIndex, progressData) {
         sortedSubjects.forEach((subject) => {
             const card = document.createElement('div');
             const hasImportantNote = WEEKLY_NOTES[currentWeek] && WEEKLY_NOTES[currentWeek][subject.name];
-            const isPinned = Object.values(progressData[subject.id] || {}).some(ch => ch.pinned);
+            const isPinned = (progressData[subject.id] || {})._subjectPinned === true;
 
             card.className = `bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between ${hasImportantNote ? 'border-2 border-yellow-400' : ''}`;
 
-            const pinIndicator = isPinned ? `<span title="ピン留めされた科目" class="text-yellow-500 ml-2">★</span>` : '';
-
             let lecturesHtml = '';
-            // 章の並び順を決定：ピン留めがあれば先頭に配置
-            const subjectProgressData = progressData[subject.id] || {};
-            let pinnedChapter = null;
+            // 章の並び順：章ピン機能は廃止。通常順で表示
             for (let i = 1; i <= subject.totalLectures; i++) {
-                if (subjectProgressData[i]?.pinned) { pinnedChapter = i; break; }
-            }
-            const order = [];
-            if (pinnedChapter) order.push(pinnedChapter);
-            for (let i = 1; i <= subject.totalLectures; i++) {
-                if (i !== pinnedChapter) order.push(i);
-            }
-
-            for (const i of order) {
                 const chapterProgress = progressData[subject.id]?.[i];
                 const status = getChapterStatus(chapterProgress);
                 const isRecommended = i === currentWeek;
@@ -107,28 +92,21 @@ export function renderWeek(weekIndex, progressData) {
                 else if (status === 'in-progress') lectureClass = 'in-progress';
                 else if (isRecommended) lectureClass = 'recommended';
 
-                const pinned = chapterProgress?.pinned === true;
-                lecturesHtml += `
-                    <div class="flex items-center gap-2">
-                        <a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>
-                        <button type="button" class="pin-chapter-btn text-gray-400 hover:text-yellow-500 transition-colors ${pinned ? 'text-yellow-500' : ''}" data-subject="${subject.id}" data-chapter="${i}" title="この章をピン留め" aria-label="この章をピン留め">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l.588 1.812a1 1 0 00.95.69h1.902c.969 0 1.371 1.24.588 1.81l-1.539 1.118a1 1 0 00-.364 1.118l.588 1.812c.3.921-.755 1.688-1.54 1.118l-1.538-1.118a1 1 0 00-1.176 0l-1.538 1.118c-.784.57-1.838-.197-1.539-1.118l.589-1.812a1 1 0 00-.365-1.118L4.923 7.24c-.783-.57-.38-1.81.588-1.81h1.902a1 1 0 00.95-.69l.586-1.812z" />
-                            </svg>
-                        </button>
-                    </div>`;
+                lecturesHtml += `<a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>`;
             }
 
-            let noteHtml = hasImportantNote ? `<div class="important-note p-3 mt-4 text-sm rounded-r-lg"><p class="whitespace-pre-line">${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
+            const pinBtn = `<button type=\"button\" class=\"pin-subject-btn ml-2 text-gray-400 hover:text-yellow-500 transition-colors ${isPinned ? 'text-yellow-500' : ''}\" data-subject=\"${subject.id}\" title=\"この科目をピン留め\" aria-label=\"この科目をピン留め\">★</button>`;
+
+            let noteHtml = hasImportantNote ? `<div class=\"important-note p-3 mt-4 text-sm rounded-r-lg\"><p class=\"whitespace-pre-line\">${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
 
             card.innerHTML = `
                 <div>
-                    <h3 class="font-bold text-lg text-indigo-800 dark:text-indigo-300 flex items-center">${subject.name} ${pinIndicator}</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">総進捗 (完了した講義数)</p>
-                    <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
-                        <div id="progress-${subject.id}" class="progress-bar-fg h-2.5 rounded-full"></div>
+                    <h3 class=\"font-bold text-lg text-indigo-800 dark:text-indigo-300 flex items-center\">${subject.name} ${pinBtn}</h3>
+                    <p class=\"text-xs text-gray-500 dark:text-gray-400 mb-4\">総進捗 (完了した講義数)</p>
+                    <div class=\"w-full progress-bar-bg rounded-full h-2.5 mb-4\">
+                        <div id=\"progress-${subject.id}\" class=\"progress-bar-fg h-2.5 rounded-full\"></div>
                     </div>
-                    <div class="lecture-grid">${lecturesHtml}</div>
+                    <div class=\"lecture-grid\">${lecturesHtml}</div>
                     ${noteHtml}
                 </div>
             `;
@@ -141,43 +119,25 @@ export function renderWeek(weekIndex, progressData) {
 }
 
 // --- ピンボタンのイベント処理（イベントデリゲーション） ---
-// クリック時に科目内のピンを排他制御し、保存後に再描画する
+// 科目単位でピンを1つだけ保持（他の科目をピンすると置き換え）
 if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
-        const btn = e.target.closest && e.target.closest('button.pin-chapter-btn');
+        const btn = e.target.closest && e.target.closest('button.pin-subject-btn');
         if (!btn) return;
         if (!progressRef || !onSaveProgress) return;
         const subjectId = btn.dataset.subject;
-        const chapterNo = parseInt(btn.dataset.chapter, 10);
-        const subjectDef = SUBJECTS.find(s => s.id === subjectId);
-        if (!subjectDef) return;
         if (!progressRef.lectures) progressRef.lectures = {};
-        if (!progressRef.lectures[subjectId]) progressRef.lectures[subjectId] = {};
-
-        // 章データの初期化
-        for (let i = 1; i <= subjectDef.totalLectures; i++) {
-            if (!progressRef.lectures[subjectId][i] || typeof progressRef.lectures[subjectId][i].vod !== 'object') {
-                progressRef.lectures[subjectId][i] = {
-                    vod: { checked: false, timestamp: null },
-                    test: { checked: false, timestamp: null },
-                    note: '',
-                    tasks: [],
-                    pinned: false
-                };
-            }
+        // すべての科目のピンを外す
+        SUBJECTS.forEach(s => {
+            if (!progressRef.lectures[s.id]) progressRef.lectures[s.id] = {};
+            progressRef.lectures[s.id]._subjectPinned = false;
+        });
+        // トグル: すでにピンされていれば全解除、未ピンならこの科目をピン
+        const wasPinned = progressRef.lectures[subjectId]._subjectPinned === true;
+        progressRef.lectures[subjectId]._subjectPinned = !wasPinned;
+        if (progressRef.lectures[subjectId]._subjectPinned) {
+            // 他は全て false にしたので単一ピン状態
         }
-
-        const alreadyPinned = progressRef.lectures[subjectId][chapterNo].pinned === true;
-        // まず全章のピンを外す
-        for (let i = 1; i <= subjectDef.totalLectures; i++) {
-            progressRef.lectures[subjectId][i].pinned = false;
-        }
-        // 既にピン済みなら全て外した状態、未ピンならこの章をピン
-        if (!alreadyPinned) {
-            progressRef.lectures[subjectId][chapterNo].pinned = true;
-        }
-
-        // 保存して再描画
         try { onSaveProgress && onSaveProgress(); } catch {}
         try { renderWeek(currentWeekIdx, progressRef.lectures); } catch {}
     });

@@ -27,10 +27,10 @@ body {
 
 /* Lecture Grid Styles */
 .lecture-grid {
-    @apply grid grid-cols-5 gap-2;
+    @apply grid grid-cols-3 sm:grid-cols-5 gap-2;
 }
 .lecture-box {
-    @apply flex justify-center items-center h-10 rounded-md font-medium cursor-pointer transition-all duration-200 border-2 border-transparent relative;
+    @apply flex justify-center items-center h-10 rounded-md font-medium cursor-pointer transition-all duration-200 border-2 border-transparent relative px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis min-w-0;
 }
 
 /* --- Color States --- */

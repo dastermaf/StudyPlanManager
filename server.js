@@ -26,6 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// favicon の404を防ぐ（空レスポンス）
+app.get('/favicon.ico', (req, res) => res.sendStatus(204));
+
 app.use('/', pageRoutes);
 app.use('/api', apiRoutes);
 

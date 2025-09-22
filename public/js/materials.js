@@ -113,15 +113,6 @@ function renderTasks() {
     });
 }
 
-function updatePinButtonState() {
-    const pinButton = document.getElementById('pin-chapter-btn');
-    if (!pinButton) return;
-    if (chapterProgress.pinned) {
-        pinButton.classList.add('text-yellow-500');
-    } else {
-        pinButton.classList.remove('text-yellow-500');
-    }
-}
 
 function setupProgressTracker() {
     const vodCheckbox = document.getElementById('task-vod');
@@ -130,7 +121,6 @@ function setupProgressTracker() {
     const addTaskBtn = document.getElementById('add-task-btn');
     const newTaskInput = document.getElementById('new-task-input');
     const todoList = document.getElementById('todo-list');
-    const pinButton = document.getElementById('pin-chapter-btn');
 
     if (!vodCheckbox || !testCheckbox || !noteTextarea || !addTaskBtn) return;
 
@@ -175,14 +165,7 @@ function setupProgressTracker() {
         renderTasks();
     });
 
-    pinButton.addEventListener('click', () => {
-        chapterProgress.pinned = !chapterProgress.pinned;
-        saveProgress();
-        updatePinButtonState();
-    });
-
     renderTasks();
-    updatePinButtonState();
 }
 
 async function initialize() {
