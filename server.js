@@ -25,8 +25,7 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// favicon の404を防ぐ（空レスポンス）
-app.get('/favicon.ico', (req, res) => res.sendStatus(204));
+app.get('/favicon.ico', (req, res) => res.redirect('/image/favicon.png'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
