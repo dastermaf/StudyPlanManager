@@ -2,34 +2,121 @@ import * as api from './api.js';
 import * as theme from './theme.js';
 import { SUBJECTS } from './studyPlan.js';
 
-let progress = {};
-let activityChart = null;
-let subjectsChart = null;
+// Глобальные переменные для хранения инстансов графиков, чтобы избежать дублирования
+let activityChartInstance = null;
+let subjectsChartInstance = null;
 
-const SUBJECT_COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'];
+// --- ИСПРАВЛЕНИЕ: Более надежная функция для расчета ключевых показателей ---
+function calculateKpiData(progress) {
+    let totalTasks = 0;
+    let completedLectures = 0;
+    let totalPossibleLectures = 0;
+    const subjectProgress = {};
 
-function renderKpiCards(completedTasks, overallProgress, topSubject) {
-    const completedTasksEl = document.getElementById('kpi-completed-tasks');
-    const overallProgressEl = document.getElementById('kpi-overall-progress');
-    const topSubjectEl = document.getElementById('kpi-top-subject');
+    // 1. Сначала подсчитываем общее количество возможных лекций из статического списка
+    for (const subject of SUBJECTS) {
+        totalPossibleLectures += subject.totalLectures || 0;
+    }
 
-    if (completedTasksEl) completedTasksEl.textContent = completedTasks;
-    if (overallProgressEl) overallProgressEl.textContent = `${overallProgress.toFixed(1)}%`;
-    if (topSubjectEl) topSubjectEl.textContent = topSubject;
+    // 2. Итерируемся по РЕАЛЬНЫМ данным о прогрессе пользователя
+    if (progress && progress.lectures) {
+        for (const subjectId in progress.lectures) {
+            const subjectData = progress.lectures[subjectId];
+            if (!subjectData || typeof subjectData !== 'object') continue;
+
+            const subjectInfo = SUBJECTS.find(s => s.id === subjectId);
+            if (!subjectInfo) continue; // Пропускаем, если предмет не найден в основном списке
+
+            let subjectCompletedCount = 0;
+            for (const chapterKey in subjectData) {
+                if (isNaN(parseInt(chapterKey, 10))) continue; // Пропускаем служебные поля
+
+                const chapter = subjectData[chapterKey];
+                if (chapter?.vod?.checked) totalTasks++;
+                if (chapter?.test?.checked) totalTasks++;
+
+                if (chapter?.vod?.checked && chapter?.test?.checked) {
+                    subjectCompletedCount++;
+                }
+            }
+            completedLectures += subjectCompletedCount;
+            subjectProgress[subjectInfo.name] = subjectInfo.totalLectures > 0
+                ? (subjectCompletedCount / subjectInfo.totalLectures) * 100
+                : 0;
+        }
+    }
+
+    const overallCompletion = totalPossibleLectures > 0 ? (completedLectures / totalPossibleLectures) * 100 : 0;
+
+    let bestSubject = '...';
+    let maxProgress = -1;
+    for (const name in subjectProgress) {
+        if (subjectProgress[name] > maxProgress) {
+            maxProgress = subjectProgress[name];
+            bestSubject = name;
+        }
+    }
+    // Если прогресса нет, оставляем значение по умолчанию
+    if (maxProgress < 0 || bestSubject === '...') {
+        bestSubject = '未開始'; // "Еще не начато"
+    }
+
+
+    return { totalTasks, overallCompletion, bestSubject, subjectProgress };
 }
 
-function renderActivityChart(chartData) {
-    const ctx = document.getElementById('activity-chart').getContext('2d');
-    if (activityChart) {
-        activityChart.destroy();
+
+// --- Функции отрисовки ---
+
+function renderKpiCards({ totalTasks, overallCompletion, bestSubject }) {
+    const totalTasksEl = document.getElementById('total-tasks-stat');
+    const overallCompletionEl = document.getElementById('overall-completion-stat');
+    const bestSubjectEl = document.getElementById('best-subject-stat');
+
+    if (totalTasksEl) totalTasksEl.textContent = totalTasks;
+    if (overallCompletionEl) overallCompletionEl.textContent = `${overallCompletion.toFixed(1)}%`;
+    if (bestSubjectEl) bestSubjectEl.textContent = bestSubject;
+}
+
+function renderActivityChart(progress) {
+    const activityByDay = {};
+    const ninetyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 90));
+
+    if (progress && progress.lectures) {
+        for (const subjectId in progress.lectures) {
+            const subject = progress.lectures[subjectId];
+            for (const chapterKey in subject) {
+                if (isNaN(parseInt(chapterKey, 10))) continue;
+                const chapter = subject[chapterKey];
+                ['vod', 'test'].forEach(taskType => {
+                    if (chapter[taskType]?.checked && chapter[taskType].timestamp) {
+                        const date = new Date(chapter[taskType].timestamp);
+                        if (date >= ninetyDaysAgo) {
+                            const day = date.toISOString().split('T')[0];
+                            activityByDay[day] = (activityByDay[day] || 0) + 1;
+                        }
+                    }
+                });
+            }
+        }
     }
-    activityChart = new Chart(ctx, {
+
+    const labels = Object.keys(activityByDay).sort();
+    const data = labels.map(day => activityByDay[day]);
+
+    const ctx = document.getElementById('activity-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    if (activityChartInstance) {
+        activityChartInstance.destroy();
+    }
+    activityChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: chartData.labels,
+            labels: labels,
             datasets: [{
                 label: '完了したタスク',
-                data: chartData.data,
+                data: data,
                 backgroundColor: 'rgba(79, 70, 229, 0.8)',
                 borderColor: 'rgba(79, 70, 229, 1)',
                 borderWidth: 1,
@@ -41,36 +128,33 @@ function renderActivityChart(chartData) {
             maintainAspectRatio: false,
             scales: {
                 y: { beginAtZero: true, ticks: { precision: 0 } },
-                x: { type: 'time', time: { unit: 'week', tooltipFormat: 'yyyy/MM/dd' }, grid: { display: false } }
+                x: { type: 'time', time: { unit: 'week' }, adapters: { date: { locale: dateFns.ja } } }
             },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        title: function(context) {
-                            return new Date(context[0].label).toLocaleDateString('ja-JP');
-                        }
-                    }
-                }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
 
-function renderSubjectsChart(chartData) {
-    const ctx = document.getElementById('subjects-chart').getContext('2d');
-    if (subjectsChart) {
-        subjectsChart.destroy();
+function renderSubjectsChart({ subjectProgress }) {
+    const labels = Object.keys(subjectProgress);
+    const data = Object.values(subjectProgress);
+    const backgroundColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'];
+
+    const ctx = document.getElementById('subjects-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    if (subjectsChartInstance) {
+        subjectsChartInstance.destroy();
     }
-    subjectsChart = new Chart(ctx, {
+    subjectsChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: chartData.labels,
+            labels: labels,
             datasets: [{
-                label: '完了率',
-                data: chartData.data,
-                backgroundColor: SUBJECT_COLORS,
-                borderColor: '#F9FAFB', // dark:bg-gray-800
+                label: '科目別完了率',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
                 borderWidth: 2,
             }]
         },
@@ -79,17 +163,10 @@ function renderSubjectsChart(chartData) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'right',
+                    position: 'bottom',
                     labels: {
                         boxWidth: 12,
-                        padding: 15,
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.label}: ${context.raw.toFixed(1)}%`;
-                        }
+                        padding: 20
                     }
                 }
             }
@@ -97,64 +174,22 @@ function renderSubjectsChart(chartData) {
     });
 }
 
-function processDataForCharts() {
-    // --- ИСПРАВЛЕНИЕ: Добавлена проверка на наличие progress.lectures ---
-    if (!progress || !progress.lectures) {
-        console.warn("データがないため、表示できません。");
-        // Можно отобразить сообщение об ошибке для пользователя
+// --- Обработка данных и вызов отрисовки ---
+function processDataForCharts(progress) {
+    if (!progress) {
+        // Устанавливаем значения по умолчанию, если нет данных
+        renderKpiCards({ totalTasks: 0, overallCompletion: 0, bestSubject: '未開始' });
         return;
     }
 
-    const activity = {};
-    let completedTasksTotal = 0;
-    const today = new Date();
-    const ninetyDaysAgo = new Date(new Date().setDate(today.getDate() - 90));
-
-    Object.values(progress.lectures).forEach(subject => {
-        Object.keys(subject).forEach(chapterKey => {
-            if (isNaN(parseInt(chapterKey, 10))) return; // Пропускаем _subjectPinned
-            const chapter = subject[chapterKey];
-            ['vod', 'test'].forEach(taskType => {
-                if (chapter && chapter[taskType]?.checked) {
-                    completedTasksTotal++;
-                    if (chapter[taskType].timestamp) {
-                        const date = new Date(chapter[taskType].timestamp);
-                        if (date >= ninetyDaysAgo) {
-                            const day = date.toISOString().split('T')[0];
-                            activity[day] = (activity[day] || 0) + 1;
-                        }
-                    }
-                }
-            });
-        });
-    });
-
-    const subjectProgressList = SUBJECTS.map(subject => {
-        const lectures = progress.lectures?.[subject.id] || {};
-        const completed = Object.values(lectures).filter(l => l && l.vod?.checked && l.test?.checked).length;
-        const total = subject.totalLectures || 1; // Избегаем деления на ноль
-        const percentage = (completed / total) * 100;
-        return { name: subject.name, progress: percentage };
-    });
-
-    const topSubject = subjectProgressList.length > 0
-        ? subjectProgressList.reduce((max, s) => s.progress > max.progress ? s : max, subjectProgressList[0]).name
-        : 'N/A';
-
-    const overallProgress = subjectProgressList.reduce((sum, s) => sum + s.progress, 0) / (subjectProgressList.length || 1);
-
-    renderKpiCards(completedTasksTotal, overallProgress, topSubject);
-
-    const activityLabels = Object.keys(activity).sort();
-    const activityData = activityLabels.map(d => activity[d]);
-    renderActivityChart({ labels: activityLabels, data: activityData });
-
-    const subjectLabels = subjectProgressList.map(s => s.name);
-    const subjectData = subjectProgressList.map(s => s.progress);
-    renderSubjectsChart({ labels: subjectLabels, data: subjectData });
+    const kpiData = calculateKpiData(progress);
+    renderKpiCards(kpiData);
+    renderActivityChart(progress);
+    renderSubjectsChart(kpiData);
 }
 
-function exportData() {
+// --- Экспорт данных ---
+function exportData(progress) {
     try {
         const dataStr = JSON.stringify(progress, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -172,30 +207,30 @@ function exportData() {
     }
 }
 
+// --- Инициализация ---
 async function initialize() {
     try {
-        const user = await api.getCurrentUser();
-        if (!user) {
-            window.location.href = '/';
-            return;
-        }
+        await api.getCurrentUser();
     } catch (e) {
         window.location.href = '/';
         return;
     }
 
-    document.getElementById('export-btn')?.addEventListener('click', exportData);
-
     try {
-        progress = await api.getProgress();
+        const progress = await api.getProgress();
+
+        document.getElementById('export-btn')?.addEventListener('click', () => exportData(progress));
         theme.applyTheme(progress.settings?.theme || 'light');
         theme.init((key, value) => {
             if (progress.settings) progress.settings[key] = value;
         });
-        processDataForCharts();
+
+        processDataForCharts(progress);
     } catch (e) {
         console.error("進捗データの読み込みに失敗しました:", e);
-        window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
+        if (!window.location.pathname.includes('/error')) {
+            window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
+        }
     }
 }
 
