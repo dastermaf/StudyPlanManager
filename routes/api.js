@@ -222,13 +222,29 @@ router.get('/image', authenticateToken, async (req, res) => {
         let urlObj;
         try { urlObj = new URL(raw); } catch { return res.status(400).send('無効なURL'); }
 
+        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+
         // 許可ホスト（セキュリティ維持）
-        const isAllowedHost = (h) => h === 'lh3.googleusercontent.com'
-            || /^lh\d+\.googleusercontent\.com$/.test(h)
-            || h.endsWith('.googleusercontent.com');
+        // ここに画像ソースとして許可するドメインを追加します。
+        const ALLOWED_IMAGE_HOSTS = [
+            'pub-8e1f6da67eed4033b14228e6b9e1393c.r2.dev', // Ваш текущий R2 домен
+            'googleusercontent.com'  // Оставляем для совместимости
+            // 'your-future-domain.com' // В будущем Вы добавите сюда свой домен
+        ];
+
+        const isAllowedHost = (hostname) => {
+            // Проверяем, совпадает ли хост с одним из разрешенных или является его поддоменом
+            return ALLOWED_IMAGE_HOSTS.some(allowedHost =>
+                hostname === allowedHost || hostname.endsWith('.' + allowedHost)
+            );
+        };
+
         if (urlObj.protocol !== 'https:' || !isAllowedHost(urlObj.hostname)) {
-            return res.status(400).send('許可されていないホストです');
+            // Для удобства в ответе будет указано, какой хост был заблокирован
+            return res.status(400).send(`許可されていないホストです: ${urlObj.hostname}`);
         }
+
+        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
         // 上流取得: ヘッダのバリエーションを試行（Some Google endpoints require specific headers）
         const COMMON = {
