@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const logger = require('../logger');
+const logger = require('./logger'); // ИСПРАВЛЕНИЕ: Путь изменен с '../logger' на './logger'
 
 // DB health state (shared module scope)
 let dbState = { healthy: false, lastError: null };
@@ -81,22 +81,23 @@ const runDataMigration = async (client) => {
 
         if (data && data.lectures) {
             for (const subjectKey in data.lectures) {
-                // --- ИСПРАВЛЕНИЕ: Удаление поврежденных данных о закреплении ---
-                if (data.lectures[subjectKey] && typeof data.lectures[subjectKey]['_subjectPinned'] === 'object') {
-                    delete data.lectures[subjectKey]['_subjectPinned'];
+                const subjectData = data.lectures[subjectKey];
+                if (!subjectData) continue;
+
+                // Удаляем поврежденные данные, если они существуют
+                if (subjectData.hasOwnProperty('_subjectPinned') && typeof subjectData._subjectPinned !== 'boolean') {
+                    delete subjectData._subjectPinned;
                     needsUpdate = true;
-                    logger.warn(`db.js: Обнаружены и удалены поврежденные данные о закреплении для пользователя ${user_id}, предмет ${subjectKey}`, { src: 'db.js' });
                 }
 
-                for (const chapterKey in data.lectures[subjectKey]) {
-                    // --- ИСПРАВЛЕНИЕ: Обрабатываем только числовые ключи глав ---
+                for (const chapterKey in subjectData) {
                     if (isNaN(parseInt(chapterKey, 10))) {
-                        continue; // Пропускаем нечисловые ключи, такие как '_subjectPinned'
+                        continue; // Пропускаем нечисловые ключи, такие как _subjectPinned
                     }
-
-                    const chapterData = data.lectures[subjectKey][chapterKey];
-                    if (chapterData && (typeof chapterData.vod !== 'object' || chapterData.vod === null)) {
+                    const chapterData = subjectData[chapterKey];
+                    if (typeof chapterData.vod !== 'object' || chapterData.vod === null) {
                         needsUpdate = true;
+
                         const newChapterData = {
                             vod: {
                                 checked: chapterData.vod || false,
@@ -110,7 +111,7 @@ const runDataMigration = async (client) => {
                             tasks: chapterData.tasks || [],
                             pinned: chapterData.pinned || false
                         };
-                        data.lectures[subjectKey][chapterKey] = newChapterData;
+                        subjectData[chapterKey] = newChapterData;
                     }
                 }
             }
@@ -161,6 +162,7 @@ const initializeDatabase = async (retries = 5) => {
             `);
 
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS encryption_key_encrypted TEXT;`);
+
             await client.query(`ALTER TABLE progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;`);
 
             await runDataMigration(client);
