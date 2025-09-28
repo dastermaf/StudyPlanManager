@@ -126,8 +126,6 @@ if (typeof document !== 'undefined') {
         if (!progressRef.lectures) progressRef.lectures = {};
         if (!progressRef.lectures[subjectId]) progressRef.lectures[subjectId] = {};
 
-        // --- ИСПРАВЛЕНИЕ: Логика закрепления нескольких предметов ---
-        // Просто переключаем статус закрепления для текущего предмета
         const wasPinned = progressRef.lectures[subjectId]._subjectPinned === true;
         progressRef.lectures[subjectId]._subjectPinned = !wasPinned;
 
@@ -146,12 +144,14 @@ export function updateWeeklyProgress(weekIndex, progressData) {
     let recommendedCompleted = 0;
 
     SUBJECTS.forEach((subject) => {
-        let subjectCompleted = 0;
+        let completedTasks = 0;
         const subjectProgressData = progressData?.[subject.id] || {};
+
+        // --- ИСПРАВЛЕНИЕ: Считаем задачи, а не главы ---
         for (let i = 1; i <= subject.totalLectures; i++) {
-            if (getChapterStatus(subjectProgressData[i]) === 'completed') {
-                subjectCompleted++;
-            }
+            const chapter = subjectProgressData[i];
+            if (chapter?.vod?.checked) completedTasks++;
+            if (chapter?.test?.checked) completedTasks++;
         }
 
         if (currentWeek <= WEEKS_COUNT && currentWeek <= subject.totalLectures) {
@@ -163,7 +163,8 @@ export function updateWeeklyProgress(weekIndex, progressData) {
 
         const subjectProgressBar = document.getElementById(`progress-${subject.id}`);
         if (subjectProgressBar) {
-            const subjectProgress = subject.totalLectures > 0 ? (subjectCompleted / subject.totalLectures) * 100 : 0;
+            const totalTasks = subject.totalLectures * 2;
+            const subjectProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
             subjectProgressBar.style.width = `${subjectProgress}%`;
         }
     });
@@ -180,20 +181,29 @@ export function updateOverallProgress(progressData) {
     const quoteText = document.getElementById('motivational-quote');
     if (!progressBar || !progressText || !quoteText) return;
 
-    let totalLectures = 0;
-    let completedLectures = 0;
+    // --- ИСПРАВЛЕНИЕ: Считаем прогресс по задачам ---
+    let totalPossibleTasks = 0;
+    let completedTasks = 0;
     SUBJECTS.forEach(subject => {
-        totalLectures += subject.totalLectures;
+        totalPossibleTasks += subject.totalLectures * 2;
         const subjectProgress = progressData?.[subject.id] || {};
-        completedLectures += Object.values(subjectProgress).filter(l => l && l.vod?.checked && l.test?.checked).length;
+        for (const chapterKey in subjectProgress) {
+            if (isNaN(parseInt(chapterKey, 10))) continue;
+            const chapter = subjectProgress[chapterKey];
+            if (chapter?.vod?.checked) completedTasks++;
+            if (chapter?.test?.checked) completedTasks++;
+        }
     });
 
-    const percentage = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
+    const percentage = totalPossibleTasks > 0 ? (completedTasks / totalPossibleTasks) * 100 : 0;
     progressBar.style.width = `${percentage}%`;
     progressBar.textContent = percentage > 10 ? `${percentage.toFixed(1)}%` : '';
     progressText.textContent = `${percentage.toFixed(1)}%`;
 
     let quoteIndex = Math.floor(percentage / 20);
+    if (quoteIndex >= MOTIVATIONAL_QUOTES.length) {
+        quoteIndex = MOTIVATIONAL_QUOTES.length - 1;
+    }
     quoteText.textContent = MOTIVATIONAL_QUOTES[quoteIndex];
 }
 

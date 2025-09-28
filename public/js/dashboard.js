@@ -9,44 +9,48 @@ let subjectsChartInstance = null;
 // --- ИСПРАВЛЕНИЕ: Более надежная функция для расчета ключевых показателей ---
 function calculateKpiData(progress) {
     let totalTasks = 0;
-    let completedLectures = 0;
-    let totalPossibleLectures = 0;
+    let completedTasks = 0;
+    let totalPossibleTasks = 0;
     const subjectProgress = {};
 
-    // 1. Сначала подсчитываем общее количество возможных лекций из статического списка
-    for (const subject of SUBJECTS) {
-        totalPossibleLectures += subject.totalLectures || 0;
-    }
+    // 1. Сначала подсчитываем общее количество возможных задач из статического списка
+    SUBJECTS.forEach(subject => {
+        totalPossibleTasks += (subject.totalLectures || 0) * 2; // VOD + Test
+    });
 
     // 2. Итерируемся по РЕАЛЬНЫМ данным о прогрессе пользователя
     if (progress && progress.lectures) {
-        for (const subjectId in progress.lectures) {
-            const subjectData = progress.lectures[subjectId];
-            if (!subjectData || typeof subjectData !== 'object') continue;
+        SUBJECTS.forEach(subjectInfo => {
+            const subjectData = progress.lectures[subjectInfo.id];
+            if (!subjectData || typeof subjectData !== 'object') {
+                subjectProgress[subjectInfo.name] = 0;
+                return;
+            };
 
-            const subjectInfo = SUBJECTS.find(s => s.id === subjectId);
-            if (!subjectInfo) continue; // Пропускаем, если предмет не найден в основном списке
-
-            let subjectCompletedCount = 0;
+            let subjectCompletedTasks = 0;
             for (const chapterKey in subjectData) {
                 if (isNaN(parseInt(chapterKey, 10))) continue; // Пропускаем служебные поля
 
                 const chapter = subjectData[chapterKey];
-                if (chapter?.vod?.checked) totalTasks++;
-                if (chapter?.test?.checked) totalTasks++;
-
-                if (chapter?.vod?.checked && chapter?.test?.checked) {
-                    subjectCompletedCount++;
+                if (chapter?.vod?.checked) {
+                    totalTasks++;
+                    subjectCompletedTasks++;
+                }
+                if (chapter?.test?.checked) {
+                    totalTasks++;
+                    subjectCompletedTasks++;
                 }
             }
-            completedLectures += subjectCompletedCount;
-            subjectProgress[subjectInfo.name] = subjectInfo.totalLectures > 0
-                ? (subjectCompletedCount / subjectInfo.totalLectures) * 100
+            completedTasks += subjectCompletedTasks;
+
+            const totalSubjectTasks = subjectInfo.totalLectures * 2;
+            subjectProgress[subjectInfo.name] = totalSubjectTasks > 0
+                ? (subjectCompletedTasks / totalSubjectTasks) * 100
                 : 0;
-        }
+        });
     }
 
-    const overallCompletion = totalPossibleLectures > 0 ? (completedLectures / totalPossibleLectures) * 100 : 0;
+    const overallCompletion = totalPossibleTasks > 0 ? (completedTasks / totalPossibleTasks) * 100 : 0;
 
     let bestSubject = '...';
     let maxProgress = -1;
@@ -56,11 +60,10 @@ function calculateKpiData(progress) {
             bestSubject = name;
         }
     }
-    // Если прогресса нет, оставляем значение по умолчанию
-    if (maxProgress < 0 || bestSubject === '...') {
+
+    if (maxProgress <= 0) {
         bestSubject = '未開始'; // "Еще не начато"
     }
-
 
     return { totalTasks, overallCompletion, bestSubject, subjectProgress };
 }
@@ -137,7 +140,7 @@ function renderActivityChart(progress) {
 
 function renderSubjectsChart({ subjectProgress }) {
     const labels = Object.keys(subjectProgress);
-    const data = Object.values(subjectProgress);
+    const data = Object.values(subjectProgress).map(p => p.toFixed(1));
     const backgroundColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'];
 
     const ctx = document.getElementById('subjects-chart')?.getContext('2d');
@@ -177,7 +180,6 @@ function renderSubjectsChart({ subjectProgress }) {
 // --- Обработка данных и вызов отрисовки ---
 function processDataForCharts(progress) {
     if (!progress) {
-        // Устанавливаем значения по умолчанию, если нет данных
         renderKpiCards({ totalTasks: 0, overallCompletion: 0, bestSubject: '未開始' });
         return;
     }
@@ -222,7 +224,8 @@ async function initialize() {
         document.getElementById('export-btn')?.addEventListener('click', () => exportData(progress));
         theme.applyTheme(progress.settings?.theme || 'light');
         theme.init((key, value) => {
-            if (progress.settings) progress.settings[key] = value;
+            if (!progress.settings) progress.settings = {};
+            progress.settings[key] = value;
         });
 
         processDataForCharts(progress);
