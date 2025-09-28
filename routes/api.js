@@ -173,11 +173,30 @@ router.post('/login', loginLimiter, async (req, res) => {
         }
         const user = rows[0];
         if (await bcrypt.compare(password, user.password)) {
-            // --- Расшифровка ключа и добавление в JWT ---
-            const [saltHex, encryptedKey] = user.encryption_key_encrypted.split(':');
-            const salt = Buffer.from(saltHex, 'hex');
-            const masterDerivedKey = deriveKeyFromMaster(salt);
-            const userKeyHex = decrypt(encryptedKey, masterDerivedKey);
+            let userKeyHex;
+            let encryptedKeyString = user.encryption_key_encrypted;
+
+            // --- НАЧАЛО ИСПРАВЛЕНИЯ: "Ленивая миграция" для старых пользователей ---
+            if (!encryptedKeyString) {
+                serverLogger.info(`Пользователь ${user.username} (ID: ${user.id}) не имеет ключа шифрования. Генерируем новый...`, { src: 'api.login' });
+                const newUserKey = crypto.randomBytes(KEY_LENGTH);
+                const newSalt = crypto.randomBytes(SALT_LENGTH);
+                const newMasterDerivedKey = deriveKeyFromMaster(newSalt);
+                const newEncryptedUserKey = encrypt(newUserKey.toString('hex'), newMasterDerivedKey);
+
+                encryptedKeyString = `${newSalt.toString('hex')}:${newEncryptedUserKey}`;
+                userKeyHex = newUserKey.toString('hex');
+
+                // Сохраняем новый ключ в базе данных
+                await pool.query('UPDATE users SET encryption_key_encrypted = $1 WHERE id = $2', [encryptedKeyString, user.id]);
+                serverLogger.info(`Новый ключ шифрования успешно сгенерирован и сохранен для пользователя ${user.id}`, { src: 'api.login' });
+            } else {
+                const [saltHex, encryptedKey] = encryptedKeyString.split(':');
+                const salt = Buffer.from(saltHex, 'hex');
+                const masterDerivedKey = deriveKeyFromMaster(salt);
+                userKeyHex = decrypt(encryptedKey, masterDerivedKey);
+            }
+            // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
             const accessToken = jwt.sign({ id: user.id, username: user.username, key: userKeyHex }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -191,6 +210,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             res.status(401).send("ユーザー名またはパスワードが正しくありません。");
         }
     } catch (error) {
+        serverLogger.error('Ошибка в процессе входа', { src: 'api.login', err: String(error.message || error) });
         res.status(500).send("サーバーエラーが発生しました。");
     }
 });
