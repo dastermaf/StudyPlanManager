@@ -176,7 +176,6 @@ router.post('/login', loginLimiter, async (req, res) => {
             let userKeyHex;
             let encryptedKeyString = user.encryption_key_encrypted;
 
-            // --- НАЧАЛО ИСПРАВЛЕНИЯ: "Ленивая миграция" для старых пользователей ---
             if (!encryptedKeyString) {
                 serverLogger.info(`Пользователь ${user.username} (ID: ${user.id}) не имеет ключа шифрования. Генерируем новый...`, { src: 'api.login' });
                 const newUserKey = crypto.randomBytes(KEY_LENGTH);
@@ -187,7 +186,6 @@ router.post('/login', loginLimiter, async (req, res) => {
                 encryptedKeyString = `${newSalt.toString('hex')}:${newEncryptedUserKey}`;
                 userKeyHex = newUserKey.toString('hex');
 
-                // Сохраняем новый ключ в базе данных
                 await pool.query('UPDATE users SET encryption_key_encrypted = $1 WHERE id = $2', [encryptedKeyString, user.id]);
                 serverLogger.info(`Новый ключ шифрования успешно сгенерирован и сохранен для пользователя ${user.id}`, { src: 'api.login' });
             } else {
@@ -196,7 +194,6 @@ router.post('/login', loginLimiter, async (req, res) => {
                 const masterDerivedKey = deriveKeyFromMaster(salt);
                 userKeyHex = decrypt(encryptedKey, masterDerivedKey);
             }
-            // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
             const accessToken = jwt.sign({ id: user.id, username: user.username, key: userKeyHex }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -227,25 +224,62 @@ router.get('/user', authenticateToken, (req, res) => {
 });
 
 router.get('/progress', authenticateToken, async (req, res) => {
+    // --- ТОЧКА ДЕБАГА: Начало обработки запроса ---
+    serverLogger.info(`[DEBUG] /progress: Запрос получен для пользователя ID ${req.user.id}`, { src: 'api.progress' });
+
     try {
         const uid = req.user.id;
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [uid]);
+
+        // --- ТОЧКА ДЕБАГА: После запроса к БД ---
+        serverLogger.info(`[DEBUG] /progress: Результат запроса к БД получен. Найдено строк: ${result.rows.length}`, { src: 'api.progress' });
+
         if (result.rows.length > 0) {
             const progressData = result.rows[0].data;
-            // --- Расшифровка заметок ---
-            progressData.encryptionKey = Buffer.from(req.user.key, 'hex');
-            const decryptedData = traverseNotes(progressData, decrypt);
-            delete decryptedData.encryptionKey;
 
-            return res.json(decryptedData);
+            // --- ТОЧКА ДЕБАГА: Данные перед расшифровкой ---
+            serverLogger.info(`[DEBUG] /progress: Данные из БД перед расшифровкой: ${JSON.stringify(progressData).substring(0, 500)}...`, { src: 'api.progress' });
+
+            const userKey = req.user.key;
+            if (!userKey) {
+                serverLogger.error(`[DEBUG] /progress: КРИТИЧЕСКАЯ ОШИБКА - отсутствует ключ шифрования для пользователя ID ${uid}`, { src: 'api.progress' });
+                return res.status(500).json({ error: 'Ключ шифрования не найден.', code: 'ENCRYPTION_KEY_MISSING' });
+            }
+            // --- ТОЧКА ДЕБАГА: Ключ для расшифровки ---
+            serverLogger.info(`[DEBUG] /progress: Ключ пользователя для расшифровки получен. Длина: ${userKey.length}`, { src: 'api.progress' });
+
+            // --- ТОЧКА ДЕБАГА: Процесс расшифровки ---
+            try {
+                progressData.encryptionKey = Buffer.from(req.user.key, 'hex');
+                const decryptedData = traverseNotes(progressData, decrypt);
+                delete decryptedData.encryptionKey;
+
+                serverLogger.info(`[DEBUG] /progress: Расшифровка заметок завершена успешно.`, { src: 'api.progress' });
+                return res.json(decryptedData);
+
+            } catch (decryptionError) {
+                serverLogger.error(`[DEBUG] /progress: КРИТИЧЕСКАЯ ОШИБКА во время расшифровки данных`, {
+                    src: 'api.progress',
+                    userId: uid,
+                    errorMessage: decryptionError.message,
+                    errorStack: decryptionError.stack
+                });
+                return res.status(500).json({ error: 'Ошибка при обработке данных пользователя.', code: 'DECRYPTION_FAILED' });
+            }
         }
-        // Auto-create default progress if missing
+
         const empty = { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
         await pool.query('INSERT INTO progress (user_id, data) VALUES ($1, $2)', [uid, empty]);
         res.setHeader('X-Notice', 'DATA_INITIALIZED');
         return res.status(200).json(empty);
+
     } catch (error) {
-        // If table or other schema missing, let client know
+        serverLogger.error(`[DEBUG] /progress: Непредвиденная ошибка в обработчике`, {
+            src: 'api.progress',
+            userId: req.user.id,
+            errorMessage: error.message,
+            errorStack: error.stack
+        });
         return res.status(500).json({ error: '進捗データの取得に失敗しました。', code: 'PROGRESS_LOAD_FAILED' });
     }
 });
@@ -278,7 +312,6 @@ router.get('/materials', authenticateToken, async (req, res) => {
         const subject = (req.query.subject || '').toString();
         const chapterRaw = (req.query.chapter || '').toString();
 
-        // 入力検証（SSRF対策: 許可された形式のみ）
         if (!/^[A-Z0-9]{10}$/.test(subject)) {
             return res.status(400).json({ error: '無効なパラメータ: subject' });
         }
@@ -294,14 +327,12 @@ router.get('/materials', authenticateToken, async (req, res) => {
 
         const url = `${baseUrl}?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}`;
 
-        // Node.js 18+ のグローバル fetch を想定
         const upstream = await fetch(url, { headers: { 'Accept': 'application/json' } });
         if (!upstream.ok) {
             const text = await upstream.text().catch(() => '');
             return res.status(502).json({ error: '上流の取得に失敗しました。', status: upstream.status, details: text.slice(0, 300) });
         }
 
-        // JSONとして返す（もしJSONでなければエラーメッセージを生成）
         const contentType = upstream.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             const text = await upstream.text().catch(() => '');
@@ -403,3 +434,4 @@ router.get('/image', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
+
