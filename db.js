@@ -95,21 +95,33 @@ const runDataMigration = async (client) => {
                         continue; // Пропускаем нечисловые ключи, такие как _subjectPinned
                     }
                     const chapterData = subjectData[chapterKey];
-                    if (typeof chapterData.vod !== 'object' || chapterData.vod === null) {
+
+                    // --- ИСПРАВЛЕНИЕ: Добавлена проверка, что chapterData является объектом ---
+                    const isObject = chapterData !== null && typeof chapterData === 'object';
+
+                    // Мигрируем, если это не объект или если у него нет дочернего объекта 'vod'
+                    if (!isObject || typeof chapterData.vod !== 'object' || chapterData.vod === null) {
                         needsUpdate = true;
+
+                        // Безопасно получаем старые значения
+                        const oldVodChecked = isObject ? chapterData.vod : !!chapterData;
+                        const oldTestChecked = isObject ? chapterData.test : false;
+                        const oldNote = isObject ? chapterData.note : '';
+                        const oldTasks = isObject ? chapterData.tasks : [];
+                        const oldPinned = isObject ? chapterData.pinned : false;
 
                         const newChapterData = {
                             vod: {
-                                checked: chapterData.vod || false,
-                                timestamp: chapterData.vod ? new Date().toISOString() : null
+                                checked: oldVodChecked,
+                                timestamp: oldVodChecked ? new Date().toISOString() : null
                             },
                             test: {
-                                checked: chapterData.test || false,
-                                timestamp: chapterData.test ? new Date().toISOString() : null
+                                checked: oldTestChecked,
+                                timestamp: oldTestChecked ? new Date().toISOString() : null
                             },
-                            note: chapterData.note || '',
-                            tasks: chapterData.tasks || [],
-                            pinned: chapterData.pinned || false
+                            note: oldNote,
+                            tasks: oldTasks,
+                            pinned: oldPinned
                         };
                         subjectData[chapterKey] = newChapterData;
                     }
