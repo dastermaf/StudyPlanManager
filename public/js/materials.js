@@ -8,6 +8,19 @@ let chapterProgress = {}; // Локальный объект для удобст
 let subjectId, chapterNo; // ID текущей главы
 let saveTimeout;
 
+// --- НОВАЯ ФУНКЦИЯ: Показ всплывающего уведомления (Toast) ---
+function showToast(message) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2500);
+}
+
 function log(message, ...details) {
     console.log(`[Materials LOG] ${message}`, ...details);
 }
@@ -53,7 +66,6 @@ function renderContent(container, data) {
                     contentHtml += `<p class="dark:text-gray-300 whitespace-pre-wrap">${item.content_1}</p>`;
                     break;
                 case 'image':
-                    // CSP対応のため、画像は同一オリジンのプロキシ経由で配信する
                     contentHtml += `<div><img src="/api/image?url=${encodeURIComponent(item.content_1)}" alt="${item.content_2 || '教材画像'}" class="my-2 rounded-lg shadow-md max-w-full h-auto"></div>`;
                     break;
                 case 'link': case 'video':
@@ -147,12 +159,14 @@ function setupProgressTracker() {
     vodCheckbox.addEventListener('change', () => {
         chapterProgress.vod.checked = vodCheckbox.checked;
         chapterProgress.vod.timestamp = vodCheckbox.checked ? new Date().toISOString() : null;
+        if (vodCheckbox.checked) showToast('VOD視聴 完了！'); // Показываем уведомление
         saveProgress();
         updateChapterProgressUI();
     });
     testCheckbox.addEventListener('change', () => {
         chapterProgress.test.checked = testCheckbox.checked;
         chapterProgress.test.timestamp = testCheckbox.checked ? new Date().toISOString() : null;
+        if (testCheckbox.checked) showToast('テスト 完了！'); // Показываем уведомление
         saveProgress();
         updateChapterProgressUI();
     });
@@ -163,6 +177,7 @@ function setupProgressTracker() {
 
     addTaskBtn.addEventListener('click', () => {
         if (newTaskInput.value.trim()) {
+            if(!chapterProgress.tasks) chapterProgress.tasks = [];
             chapterProgress.tasks.push({ text: newTaskInput.value.trim(), completed: false });
             newTaskInput.value = '';
             saveProgress();
@@ -187,13 +202,8 @@ function setupProgressTracker() {
 }
 
 async function initialize() {
-    // Проверяем аутентификацию через cookie, запрашивая текущего пользователя
     try {
-        const user = await api.getCurrentUser();
-        if (!user) {
-            window.location.href = '/';
-            return;
-        }
+        await api.getCurrentUser();
     } catch (e) {
         window.location.href = '/';
         return;

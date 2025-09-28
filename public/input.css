@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ваши кастомные стили, которые были в style.css, теперь здесь */
+/* Ваши кастомные стили */
 body {
     font-family: 'Inter', sans-serif;
 }
@@ -34,25 +34,58 @@ body {
 }
 
 /* --- Color States --- */
-/* Optional */
 .lecture-box.optional { @apply bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300; }
 .lecture-box.optional:hover { @apply bg-gray-200 dark:bg-gray-600; }
-
-/* Recommended */
 .lecture-box.recommended { @apply bg-red-100 text-red-800 border-red-400 dark:bg-red-900/50 dark:text-red-200 dark:border-red-500; }
 .lecture-box.recommended:hover { @apply bg-red-200 dark:bg-red-900; }
-
-/* In Progress */
 .lecture-box.in-progress { @apply bg-yellow-100 text-yellow-800 border-yellow-400 dark:bg-yellow-900/50 dark:text-yellow-200 dark:border-yellow-500; }
 .lecture-box.in-progress:hover { @apply bg-yellow-200 dark:bg-yellow-900; }
-
-/* Completed */
 .lecture-box.completed { @apply bg-green-100 text-green-800 border-green-400 dark:bg-green-900/50 dark:text-green-200 dark:border-green-500; }
 .lecture-box.completed::after {
     content: '✔';
     @apply absolute -top-2 -right-1.5 text-lg text-green-600 dark:text-green-400;
 }
 
-/* Modal Styles */
-#modal-overlay { @apply transition-opacity duration-300; }
-#modal-content { @apply transition-all duration-300; }
+/* --- НОВЫЕ СТИЛИ ДЛЯ МОТИВАЦИИ --- */
+
+/* Стили для Конфетти */
+.confetti-container {
+    @apply pointer-events-none fixed top-0 left-0 w-full h-full overflow-hidden z-50;
+}
+.confetti-particle {
+    @apply absolute;
+    width: 10px;
+    height: 10px;
+    opacity: 0;
+    animation: fall 3s ease-in-out forwards;
+}
+@keyframes fall {
+    0% { transform: translateY(-10vh) rotateZ(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotateZ(720deg); opacity: 0; }
+}
+
+/* Стили для всплывающего уведомления (Toast) */
+.toast-notification {
+    @apply fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-xl text-lg font-semibold;
+    transform: translateY(200%);
+    transition: transform 0.5s ease-in-out;
+}
+.toast-notification.show {
+    transform: translateY(0);
+}
+
+/* Улучшенные стили для чекбоксов */
+.custom-checkbox {
+    @apply appearance-none h-6 w-6 border-2 border-gray-300 dark:border-gray-600 rounded-md checked:bg-indigo-600 checked:border-transparent focus:outline-none transition duration-200 cursor-pointer;
+    position: relative;
+}
+.custom-checkbox:checked::after {
+    content: '✔';
+    @apply absolute text-white text-sm;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.custom-checkbox-label {
+    @apply flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors;
+}
