@@ -14,6 +14,13 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-default-jwt-secr
     process.exit(1);
 }
 
+// Новая проверка: MASTER_ENCRYPTION_KEY
+if (!process.env.MASTER_ENCRYPTION_KEY || process.env.MASTER_ENCRYPTION_KEY.length < 32) {
+    logger.error('КРИТИЧЕСКАЯ ОШИБКА: MASTER_ENCRYPTION_KEY не установлен или имеет недостаточную длину (требуется >= 32 символов).', { src: 'server.js' });
+    process.exit(1);
+}
+
+
 const app = express();
 const port = process.env.PORT || 3000;
 

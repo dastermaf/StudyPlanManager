@@ -1,7 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { pool } = require('../db');
+const crypto = require('crypto');
+const { pool, wrapClient } = require('../db');
 const authenticateToken = require('../middleware/authenticateToken');
 const { registerLimiter, loginLimiter } = require('../middleware/security');
 const { ensureDbForApi } = require('../middleware/dbHealth');
@@ -9,7 +10,60 @@ const { ensureDbForApi } = require('../middleware/dbHealth');
 const router = express.Router();
 router.use(ensureDbForApi);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-jwt-secret-key-for-planner';
+const MASTER_KEY = Buffer.from(process.env.MASTER_ENCRYPTION_KEY, 'utf8');
 
+// --- Crypto Module ---
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16;
+const SALT_LENGTH = 64;
+const KEY_LENGTH = 32;
+const TAG_LENGTH = 16;
+const PBKDF2_ITERATIONS = 100000;
+
+function encrypt(text, key) {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return Buffer.concat([iv, encrypted, tag]).toString('base64');
+}
+
+function decrypt(encryptedText, key) {
+    try {
+        const data = Buffer.from(encryptedText, 'base64');
+        const iv = data.slice(0, IV_LENGTH);
+        const encrypted = data.slice(IV_LENGTH, data.length - TAG_LENGTH);
+        const tag = data.slice(data.length - TAG_LENGTH);
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(tag);
+        const decrypted = decipher.update(encrypted, 'binary', 'utf8') + decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        // Если расшифровка не удалась, возвращаем исходный (вероятно, незашифрованный) текст
+        return encryptedText;
+    }
+}
+
+function deriveKeyFromMaster(salt) {
+    return crypto.pbkdf2Sync(MASTER_KEY, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha512');
+}
+
+// --- Data Traversal for Encryption/Decryption ---
+function traverseNotes(progressData, operation) {
+    if (!progressData || !progressData.lectures) return progressData;
+    const key = progressData.encryptionKey; // Ключ добавляется временно
+    if (!key) return progressData;
+
+    for (const subjectId in progressData.lectures) {
+        for (const chapterNo in progressData.lectures[subjectId]) {
+            const chapter = progressData.lectures[subjectId][chapterNo];
+            if (chapter && typeof chapter.note === 'string' && chapter.note) {
+                chapter.note = operation(chapter.note, key);
+            }
+        }
+    }
+    return progressData;
+}
 // ---- Client log intake endpoint ----
 const serverLogger = require('../logger');
 const logRate = new Map(); // ip -> { count, reset }
@@ -74,7 +128,16 @@ router.post('/register', registerLimiter, async (req, res) => {
             return res.status(400).json({ error: 'ユーザー名、パスワード、デバイスIDは必須です。' });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-        const client = await pool.connect();
+
+        // --- Создание ключа шифрования ---
+        const userKey = crypto.randomBytes(KEY_LENGTH);
+        const salt = crypto.randomBytes(SALT_LENGTH);
+        const masterDerivedKey = deriveKeyFromMaster(salt);
+        const encryptedUserKey = encrypt(userKey.toString('hex'), masterDerivedKey);
+        const finalKeyToStore = `${salt.toString('hex')}:${encryptedUserKey}`;
+
+        const rawClient = await pool.connect();
+        const client = wrapClient(rawClient);
         try {
             await client.query('BEGIN');
             const deviceCheck = await client.query('SELECT * FROM device_registrations WHERE device_id = $1', [deviceId]);
@@ -82,7 +145,7 @@ router.post('/register', registerLimiter, async (req, res) => {
                 await client.query('ROLLBACK');
                 return res.status(403).json({ error: 'このデバイスからはすでにアカウントが登録されています。' });
             }
-            const newUserRes = await client.query("INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username", [username, hashedPassword]);
+            const newUserRes = await client.query("INSERT INTO users (username, password, encryption_key_encrypted) VALUES ($1, $2, $3) RETURNING id, username", [username, hashedPassword, finalKeyToStore]);
             const newUser = newUserRes.rows[0];
             await client.query('INSERT INTO device_registrations (device_id, user_id) VALUES ($1, $2)', [deviceId, newUser.id]);
             const emptyProgress = { settings: { theme: 'light' }, lectures: {} };
@@ -104,19 +167,25 @@ router.post('/register', registerLimiter, async (req, res) => {
 router.post('/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
     try {
-        const { rows } = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+        const { rows } = await pool.query("SELECT id, username, password, encryption_key_encrypted FROM users WHERE username = $1", [username]);
         if (rows.length === 0) {
             return res.status(401).send("ユーザー名またはパスワードが正しくありません。");
         }
         const user = rows[0];
         if (await bcrypt.compare(password, user.password)) {
-            const accessToken = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+            // --- Расшифровка ключа и добавление в JWT ---
+            const [saltHex, encryptedKey] = user.encryption_key_encrypted.split(':');
+            const salt = Buffer.from(saltHex, 'hex');
+            const masterDerivedKey = deriveKeyFromMaster(salt);
+            const userKeyHex = decrypt(encryptedKey, masterDerivedKey);
+
+            const accessToken = jwt.sign({ id: user.id, username: user.username, key: userKeyHex }, JWT_SECRET, { expiresIn: '7d' });
+
             res.cookie('accessToken', accessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
             });
-            // ГЛАВНОЕ ИЗМЕНЕНИЕ: ВЫПОЛНЯЕМ ПЕРЕНАПРАВЛЕНИЕ
             res.redirect('/app');
         } else {
             res.status(401).send("ユーザー名またはパスワードが正しくありません。");
@@ -132,7 +201,9 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/user', authenticateToken, (req, res) => {
-    res.json(req.user);
+    // Не отправляем ключ на клиент
+    const { key, ...user } = req.user;
+    res.json(user);
 });
 
 router.get('/progress', authenticateToken, async (req, res) => {
@@ -140,7 +211,13 @@ router.get('/progress', authenticateToken, async (req, res) => {
         const uid = req.user.id;
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [uid]);
         if (result.rows.length > 0) {
-            return res.json(result.rows[0].data);
+            const progressData = result.rows[0].data;
+            // --- Расшифровка заметок ---
+            progressData.encryptionKey = Buffer.from(req.user.key, 'hex');
+            const decryptedData = traverseNotes(progressData, decrypt);
+            delete decryptedData.encryptionKey;
+
+            return res.json(decryptedData);
         }
         // Auto-create default progress if missing
         const empty = { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
@@ -159,10 +236,15 @@ router.post('/progress', authenticateToken, async (req, res) => {
         if (!progressData) {
             return res.status(400).json({error: "保存するデータがありません。"});
         }
+        // --- Шифрование заметок ---
+        progressData.encryptionKey = Buffer.from(req.user.key, 'hex');
+        const encryptedData = traverseNotes(progressData, encrypt);
+        delete encryptedData.encryptionKey;
+
         await pool.query(
             `INSERT INTO progress (user_id, data) VALUES ($1, $2)
              ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = CURRENT_TIMESTAMP`,
-            [req.user.id, progressData]
+            [req.user.id, encryptedData]
         );
         res.status(200).json({ success: true, message: '進捗が保存されました。' });
     } catch (error) {
@@ -222,31 +304,19 @@ router.get('/image', authenticateToken, async (req, res) => {
         let urlObj;
         try { urlObj = new URL(raw); } catch { return res.status(400).send('無効なURL'); }
 
-        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
-
-        // 許可ホスト（セキュリティ維持）
-        // ここに画像ソースとして許可するドメインを追加します。
         const ALLOWED_IMAGE_HOSTS = [
-            'pub-8e1f6da67eed4033b14228e6b9e1393c.r2.dev', // Ваш текущий R2 домен
-            'googleusercontent.com'  // Оставляем для совместимости
-            // 'your-future-domain.com' // В будущем Вы добавите сюда свой домен
+            'pub-8e1f6da67eed4033b14228e6b9e1393c.r2.dev',
+            'googleusercontent.com'
         ];
-
         const isAllowedHost = (hostname) => {
-            // Проверяем, совпадает ли хост с одним из разрешенных или является его поддоменом
             return ALLOWED_IMAGE_HOSTS.some(allowedHost =>
                 hostname === allowedHost || hostname.endsWith('.' + allowedHost)
             );
         };
-
         if (urlObj.protocol !== 'https:' || !isAllowedHost(urlObj.hostname)) {
-            // Для удобства в ответе будет указано, какой хост был заблокирован
             return res.status(400).send(`許可されていないホストです: ${urlObj.hostname}`);
         }
 
-        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
-        // 上流取得: ヘッダのバリエーションを試行（Some Google endpoints require specific headers）
         const COMMON = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
             'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
@@ -257,15 +327,9 @@ router.get('/image', authenticateToken, async (req, res) => {
             'Connection': 'keep-alive'
         };
         const trials = [
-            { // 1st: Google Sites 参照元を付与
-                headers: { ...COMMON, 'Referer': 'https://sites.google.com/', 'Origin': 'https://sites.google.com' }
-            },
-            { // 2nd: 参照元なし
-                headers: { ...COMMON }
-            },
-            { // 3rd: 画像オリジンを参照元に
-                headers: { ...COMMON, 'Referer': urlObj.origin + '/', 'Origin': urlObj.origin }
-            }
+            { headers: { ...COMMON, 'Referer': 'https://sites.google.com/', 'Origin': 'https://sites.google.com' } },
+            { headers: { ...COMMON } },
+            { headers: { ...COMMON, 'Referer': urlObj.origin + '/', 'Origin': urlObj.origin } }
         ];
 
         let lastStatus = 0;
@@ -281,7 +345,6 @@ router.get('/image', authenticateToken, async (req, res) => {
                     return res.status(200).send(Buffer.from(ab));
                 } else {
                     lastStatus = upstream.status;
-                    // 失敗時の本文を短く保持（診断用）
                     lastBody = await upstream.text().catch(() => '');
                 }
             } catch (e) {
@@ -290,7 +353,6 @@ router.get('/image', authenticateToken, async (req, res) => {
             }
         }
         res.setHeader('X-Upstream-Status', String(lastStatus));
-        // フォールバック: 壊れた画像の代わりにプレースホルダーSVGを返す（CSP適合・視覚的に崩れない）
         const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
   <defs>

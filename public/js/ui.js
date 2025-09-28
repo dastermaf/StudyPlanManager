@@ -118,30 +118,29 @@ export function renderWeek(weekIndex, progressData) {
     updateNavButtons(weekIndex);
 }
 
-// --- ピンボタンのイベント処理（イベントデリゲーション） ---
-// 科目単位でピンを1つだけ保持（他の科目をピンすると置き換え）
+// --- НАЧАЛО ИЗМЕНЕНИЙ ---
+// Обработчик нажатия на кнопку закрепления.
+// Теперь позволяет закреплять несколько предметов.
 if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
         const btn = e.target.closest && e.target.closest('button.pin-subject-btn');
         if (!btn) return;
         if (!progressRef || !onSaveProgress) return;
+
         const subjectId = btn.dataset.subject;
         if (!progressRef.lectures) progressRef.lectures = {};
-        // すべての科目のピンを外す
-        SUBJECTS.forEach(s => {
-            if (!progressRef.lectures[s.id]) progressRef.lectures[s.id] = {};
-            progressRef.lectures[s.id]._subjectPinned = false;
-        });
-        // トグル: すでにピンされていれば全解除、未ピンならこの科目をピン
+        if (!progressRef.lectures[subjectId]) progressRef.lectures[subjectId] = {};
+
+        // Просто переключаем статус закрепления для нажатого предмета
         const wasPinned = progressRef.lectures[subjectId]._subjectPinned === true;
         progressRef.lectures[subjectId]._subjectPinned = !wasPinned;
-        if (progressRef.lectures[subjectId]._subjectPinned) {
-            // 他は全て false にしたので単一ピン状態
-        }
+
+        // Сохраняем прогресс и перерисовываем интерфейс
         try { onSaveProgress && onSaveProgress(); } catch {}
         try { renderWeek(currentWeekIdx, progressRef.lectures); } catch {}
     });
 }
+// --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 export function updateWeeklyProgress(weekIndex, progressData) {
     const weeklyProgressBar = document.getElementById('weekly-progress-bar');

@@ -149,6 +149,9 @@ const initializeDatabase = async (retries = 5) => {
                 );
             `);
 
+            // --- НОВОЕ ПОЛЕ ДЛЯ КЛЮЧА ШИФРОВАНИЯ ---
+            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS encryption_key_encrypted TEXT;`);
+
             // Ensure newer columns if schema evolves (idempotent guards)
             await client.query(`ALTER TABLE progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;`);
 
