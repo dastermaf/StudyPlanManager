@@ -6,20 +6,23 @@ let progress = {};
 let activityChart = null;
 let subjectsChart = null;
 
-// Цвета для диаграммы по предметам
 const SUBJECT_COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899', '#6EE7B7', '#FBBF24'];
 
-// --- Функции отрисовки графиков ---
+function renderKpiCards(completedTasks, overallProgress, topSubject) {
+    const completedTasksEl = document.getElementById('kpi-completed-tasks');
+    const overallProgressEl = document.getElementById('kpi-overall-progress');
+    const topSubjectEl = document.getElementById('kpi-top-subject');
 
-function renderActivityChart(chartData, isDarkMode) {
+    if (completedTasksEl) completedTasksEl.textContent = completedTasks;
+    if (overallProgressEl) overallProgressEl.textContent = `${overallProgress.toFixed(1)}%`;
+    if (topSubjectEl) topSubjectEl.textContent = topSubject;
+}
+
+function renderActivityChart(chartData) {
     const ctx = document.getElementById('activity-chart').getContext('2d');
     if (activityChart) {
         activityChart.destroy();
     }
-
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const labelColor = isDarkMode ? '#d1d5db' : '#374151';
-
     activityChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -37,34 +40,15 @@ function renderActivityChart(chartData, isDarkMode) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        color: labelColor,
-                    },
-                    grid: { color: gridColor }
-                },
-                x: {
-                    type: 'time',
-                    time: {
-                        unit: 'day',
-                        tooltipFormat: 'yyyy/MM/dd',
-                        displayFormats: {
-                            day: 'M/d'
-                        }
-                    },
-                    ticks: { color: labelColor },
-                    grid: { display: false }
-                }
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { type: 'time', time: { unit: 'week', tooltipFormat: 'yyyy/MM/dd' }, grid: { display: false } }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    displayColors: false,
                     callbacks: {
                         title: function(context) {
-                            return dateFns.format(new Date(context[0].label), 'yyyy年M月d日');
+                            return new Date(context[0].label).toLocaleDateString('ja-JP');
                         }
                     }
                 }
@@ -73,22 +57,20 @@ function renderActivityChart(chartData, isDarkMode) {
     });
 }
 
-function renderSubjectsChart(chartData, isDarkMode) {
+function renderSubjectsChart(chartData) {
     const ctx = document.getElementById('subjects-chart').getContext('2d');
     if (subjectsChart) {
         subjectsChart.destroy();
     }
-
-    const labelColor = isDarkMode ? '#d1d5db' : '#374151';
-
     subjectsChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: chartData.labels,
             datasets: [{
+                label: '完了率',
                 data: chartData.data,
                 backgroundColor: SUBJECT_COLORS,
-                borderColor: isDarkMode ? '#1f2937' : '#ffffff',
+                borderColor: '#F9FAFB', // dark:bg-gray-800
                 borderWidth: 2,
             }]
         },
@@ -97,24 +79,16 @@ function renderSubjectsChart(chartData, isDarkMode) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom',
+                    position: 'right',
                     labels: {
-                        color: labelColor,
-                        padding: 15,
                         boxWidth: 12,
+                        padding: 15,
                     }
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed !== null) {
-                                label += context.parsed.toFixed(1) + '%';
-                            }
-                            return label;
+                            return `${context.label}: ${context.raw.toFixed(1)}%`;
                         }
                     }
                 }
@@ -123,77 +97,63 @@ function renderSubjectsChart(chartData, isDarkMode) {
     });
 }
 
+function processDataForCharts() {
+    // --- ИСПРАВЛЕНИЕ: Добавлена проверка на наличие progress.lectures ---
+    if (!progress || !progress.lectures) {
+        console.warn("データがないため、表示できません。");
+        // Можно отобразить сообщение об ошибке для пользователя
+        return;
+    }
 
-// --- Обработка данных и обновление UI ---
-
-function processData() {
-    const lectures = progress.lectures || {};
-
-    // 1. Расчет для карточек
-    let totalTasks = 0;
-    let totalLectures = 0;
-    let completedLectures = 0;
-    const subjectProgress = {};
-
-    SUBJECTS.forEach(subject => {
-        totalLectures += subject.totalLectures;
-        const subjLectures = lectures[subject.id] || {};
-        let subjCompleted = 0;
-        Object.values(subjLectures).forEach(chapter => {
-            if(chapter.vod?.checked) totalTasks++;
-            if(chapter.test?.checked) totalTasks++;
-            if(chapter.vod?.checked && chapter.test?.checked) {
-                subjCompleted++;
-            }
-        });
-        completedLectures += subjCompleted;
-        subjectProgress[subject.name] = subject.totalLectures > 0 ? (subjCompleted / subject.totalLectures) * 100 : 0;
-    });
-
-    const overallCompletion = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
-    const bestSubject = Object.entries(subjectProgress).reduce((best, current) => current[1] > best[1] ? current : best, ["-", 0]);
-
-    document.getElementById('total-tasks-stat').textContent = totalTasks;
-    document.getElementById('overall-completion-stat').textContent = `${overallCompletion.toFixed(1)}%`;
-    document.getElementById('best-subject-stat').textContent = bestSubject[0];
-
-    // 2. Данные для графика активности (последние 90 дней)
-    const activity = new Map();
+    const activity = {};
+    let completedTasksTotal = 0;
     const today = new Date();
-    const ninetyDaysAgo = dateFns.subDays(today, 90);
+    const ninetyDaysAgo = new Date(new Date().setDate(today.getDate() - 90));
 
-    Object.values(lectures).forEach(subject => {
-        Object.values(subject).forEach(chapter => {
+    Object.values(progress.lectures).forEach(subject => {
+        Object.keys(subject).forEach(chapterKey => {
+            if (isNaN(parseInt(chapterKey, 10))) return; // Пропускаем _subjectPinned
+            const chapter = subject[chapterKey];
             ['vod', 'test'].forEach(taskType => {
-                if (chapter[taskType]?.checked && chapter[taskType].timestamp) {
-                    const date = new Date(chapter[taskType].timestamp);
-                    if (date >= ninetyDaysAgo) {
-                        const day = dateFns.format(date, 'yyyy-MM-dd');
-                        activity.set(day, (activity.get(day) || 0) + 1);
+                if (chapter && chapter[taskType]?.checked) {
+                    completedTasksTotal++;
+                    if (chapter[taskType].timestamp) {
+                        const date = new Date(chapter[taskType].timestamp);
+                        if (date >= ninetyDaysAgo) {
+                            const day = date.toISOString().split('T')[0];
+                            activity[day] = (activity[day] || 0) + 1;
+                        }
                     }
                 }
             });
         });
     });
 
-    const sortedActivity = [...activity.entries()].sort((a, b) => new Date(a[0]) - new Date(b[0]));
-    const activityChartData = {
-        labels: sortedActivity.map(d => d[0]),
-        data: sortedActivity.map(d => d[1])
-    };
+    const subjectProgressList = SUBJECTS.map(subject => {
+        const lectures = progress.lectures?.[subject.id] || {};
+        const completed = Object.values(lectures).filter(l => l && l.vod?.checked && l.test?.checked).length;
+        const total = subject.totalLectures || 1; // Избегаем деления на ноль
+        const percentage = (completed / total) * 100;
+        return { name: subject.name, progress: percentage };
+    });
 
-    // 3. Данные для круговой диаграммы
-    const subjectsChartData = {
-        labels: Object.keys(subjectProgress),
-        data: Object.values(subjectProgress)
-    };
+    const topSubject = subjectProgressList.length > 0
+        ? subjectProgressList.reduce((max, s) => s.progress > max.progress ? s : max, subjectProgressList[0]).name
+        : 'N/A';
 
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    renderActivityChart(activityChartData, isDarkMode);
-    renderSubjectsChart(subjectsChartData, isDarkMode);
+    const overallProgress = subjectProgressList.reduce((sum, s) => sum + s.progress, 0) / (subjectProgressList.length || 1);
+
+    renderKpiCards(completedTasksTotal, overallProgress, topSubject);
+
+    const activityLabels = Object.keys(activity).sort();
+    const activityData = activityLabels.map(d => activity[d]);
+    renderActivityChart({ labels: activityLabels, data: activityData });
+
+    const subjectLabels = subjectProgressList.map(s => s.name);
+    const subjectData = subjectProgressList.map(s => s.progress);
+    renderSubjectsChart({ labels: subjectLabels, data: subjectData });
 }
 
-// --- Экспорт данных ---
 function exportData() {
     try {
         const dataStr = JSON.stringify(progress, null, 2);
@@ -212,7 +172,6 @@ function exportData() {
     }
 }
 
-// --- Инициализация ---
 async function initialize() {
     try {
         const user = await api.getCurrentUser();
@@ -229,27 +188,11 @@ async function initialize() {
 
     try {
         progress = await api.getProgress();
+        theme.applyTheme(progress.settings?.theme || 'light');
         theme.init((key, value) => {
             if (progress.settings) progress.settings[key] = value;
-            // При смене темы перерисовываем графики с новыми цветами
-            const isDarkMode = value === 'dark';
-            if (activityChart) {
-                const activityData = {
-                    labels: activityChart.data.labels,
-                    data: activityChart.data.datasets[0].data
-                };
-                renderActivityChart(activityData, isDarkMode);
-            }
-            if (subjectsChart) {
-                const subjectsData = {
-                    labels: subjectsChart.data.labels,
-                    data: subjectsChart.data.datasets[0].data
-                };
-                renderSubjectsChart(subjectsData, isDarkMode);
-            }
         });
-        theme.applyTheme(progress.settings?.theme || 'light');
-        processData();
+        processDataForCharts();
     } catch (e) {
         console.error("進捗データの読み込みに失敗しました:", e);
         window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
@@ -257,3 +200,4 @@ async function initialize() {
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
+

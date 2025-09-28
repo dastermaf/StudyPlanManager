@@ -23,7 +23,7 @@ const MOTIVATIONAL_QUOTES = [
 ];
 
 function getChapterStatus(chapterProgress) {
-    if (!chapterProgress) return 'incomplete';
+    if (!chapterProgress || typeof chapterProgress !== 'object') return 'incomplete';
     if (chapterProgress.vod?.checked && chapterProgress.test?.checked) return 'completed';
     if (chapterProgress.vod?.checked || chapterProgress.test?.checked) return 'in-progress';
     return 'incomplete';
@@ -42,19 +42,17 @@ export function renderWeek(weekIndex, progressData) {
     const weekTitle = document.getElementById('week-title');
     const weekPeriod = document.getElementById('week-period');
 
-    // Надежная проверка: если мы не на главной странице, ничего не делаем
     if (!planContainer || !finalPrepContainer || !weekTitle || !weekPeriod) {
-        console.warn("UI: Элементы для рендеринга недели не найдены. Операция отменена.");
         return;
     }
 
     planContainer.innerHTML = '';
 
     const sortedSubjects = [...SUBJECTS].sort((a, b) => {
-        const isAPinned = (progressData[a.id] || {})._subjectPinned === true;
-        const isBPinned = (progressData[b.id] || {})._subjectPinned === true;
-        if (isAPinned && !isBPinned) return -1;
-        if (!isAPinned && isBPinned) return 1;
+        const aIsPinned = progressData?.[a.id]?._subjectPinned === true;
+        const bIsPinned = progressData?.[b.id]?._subjectPinned === true;
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
         return 0;
     });
 
@@ -76,14 +74,13 @@ export function renderWeek(weekIndex, progressData) {
         sortedSubjects.forEach((subject) => {
             const card = document.createElement('div');
             const hasImportantNote = WEEKLY_NOTES[currentWeek] && WEEKLY_NOTES[currentWeek][subject.name];
-            const isPinned = (progressData[subject.id] || {})._subjectPinned === true;
+            const isPinned = progressData?.[subject.id]?._subjectPinned === true;
 
             card.className = `bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between ${hasImportantNote ? 'border-2 border-yellow-400' : ''}`;
 
             let lecturesHtml = '';
-            // 章の並び順：章ピン機能は廃止。通常順で表示
             for (let i = 1; i <= subject.totalLectures; i++) {
-                const chapterProgress = progressData[subject.id]?.[i];
+                const chapterProgress = progressData?.[subject.id]?.[i];
                 const status = getChapterStatus(chapterProgress);
                 const isRecommended = i === currentWeek;
 
@@ -95,18 +92,18 @@ export function renderWeek(weekIndex, progressData) {
                 lecturesHtml += `<a href="/materials/${subject.id}/${i}" class="lecture-box ${lectureClass}">第${i}章</a>`;
             }
 
-            const pinBtn = `<button type=\"button\" class=\"pin-subject-btn ml-2 text-gray-400 hover:text-yellow-500 transition-colors ${isPinned ? 'text-yellow-500' : ''}\" data-subject=\"${subject.id}\" title=\"この科目をピン留め\" aria-label=\"この科目をピン留め\">★</button>`;
+            const pinBtn = `<button type="button" class="pin-subject-btn ml-2 text-gray-400 hover:text-yellow-500 transition-colors ${isPinned ? 'text-yellow-500' : ''}" data-subject-id="${subject.id}" title="この科目をピン留め" aria-label="この科目をピン留め">★</button>`;
 
-            let noteHtml = hasImportantNote ? `<div class=\"important-note p-3 mt-4 text-sm rounded-r-lg\"><p class=\"whitespace-pre-line\">${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
+            let noteHtml = hasImportantNote ? `<div class="important-note p-3 mt-4 text-sm rounded-r-lg"><p class="whitespace-pre-line">${WEEKLY_NOTES[currentWeek][subject.name]}</p></div>` : '';
 
             card.innerHTML = `
                 <div>
-                    <h3 class=\"font-bold text-lg text-indigo-800 dark:text-indigo-300 flex items-center\">${subject.name} ${pinBtn}</h3>
-                    <p class=\"text-xs text-gray-500 dark:text-gray-400 mb-4\">総進捗 (完了した講義数)</p>
-                    <div class=\"w-full progress-bar-bg rounded-full h-2.5 mb-4\">
-                        <div id=\"progress-${subject.id}\" class=\"progress-bar-fg h-2.5 rounded-full\"></div>
+                    <h3 class="font-bold text-lg text-indigo-800 dark:text-indigo-300 flex items-center">${subject.name} ${pinBtn}</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">総進捗 (完了した講義数)</p>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
+                        <div id="progress-${subject.id}" class="progress-bar-fg h-2.5 rounded-full"></div>
                     </div>
-                    <div class=\"lecture-grid\">${lecturesHtml}</div>
+                    <div class="lecture-grid">${lecturesHtml}</div>
                     ${noteHtml}
                 </div>
             `;
@@ -118,29 +115,26 @@ export function renderWeek(weekIndex, progressData) {
     updateNavButtons(weekIndex);
 }
 
-// --- НАЧАЛО ИЗМЕНЕНИЙ ---
-// Обработчик нажатия на кнопку закрепления.
-// Теперь позволяет закреплять несколько предметов.
+// --- ピンボタンのイベント処理（イベントデリゲーション） ---
 if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
         const btn = e.target.closest && e.target.closest('button.pin-subject-btn');
         if (!btn) return;
         if (!progressRef || !onSaveProgress) return;
 
-        const subjectId = btn.dataset.subject;
+        const subjectId = btn.dataset.subjectId;
         if (!progressRef.lectures) progressRef.lectures = {};
         if (!progressRef.lectures[subjectId]) progressRef.lectures[subjectId] = {};
 
-        // Просто переключаем статус закрепления для нажатого предмета
+        // --- ИСПРАВЛЕНИЕ: Логика закрепления нескольких предметов ---
+        // Просто переключаем статус закрепления для текущего предмета
         const wasPinned = progressRef.lectures[subjectId]._subjectPinned === true;
         progressRef.lectures[subjectId]._subjectPinned = !wasPinned;
 
-        // Сохраняем прогресс и перерисовываем интерфейс
         try { onSaveProgress && onSaveProgress(); } catch {}
         try { renderWeek(currentWeekIdx, progressRef.lectures); } catch {}
     });
 }
-// --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 export function updateWeeklyProgress(weekIndex, progressData) {
     const weeklyProgressBar = document.getElementById('weekly-progress-bar');
@@ -153,14 +147,14 @@ export function updateWeeklyProgress(weekIndex, progressData) {
 
     SUBJECTS.forEach((subject) => {
         let subjectCompleted = 0;
-        const subjectProgressData = progressData[subject.id] || {};
+        const subjectProgressData = progressData?.[subject.id] || {};
         for (let i = 1; i <= subject.totalLectures; i++) {
             if (getChapterStatus(subjectProgressData[i]) === 'completed') {
                 subjectCompleted++;
             }
         }
 
-        if (currentWeek <= WEEKS_COUNT) {
+        if (currentWeek <= WEEKS_COUNT && currentWeek <= subject.totalLectures) {
             recommendedTotal++;
             if (getChapterStatus(subjectProgressData[currentWeek]) === 'completed') {
                 recommendedCompleted++;
@@ -190,8 +184,8 @@ export function updateOverallProgress(progressData) {
     let completedLectures = 0;
     SUBJECTS.forEach(subject => {
         totalLectures += subject.totalLectures;
-        const subjectProgress = progressData[subject.id] || {};
-        completedLectures += Object.values(subjectProgress).filter(l => l.vod?.checked && l.test?.checked).length;
+        const subjectProgress = progressData?.[subject.id] || {};
+        completedLectures += Object.values(subjectProgress).filter(l => l && l.vod?.checked && l.test?.checked).length;
     });
 
     const percentage = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
@@ -204,7 +198,6 @@ export function updateOverallProgress(progressData) {
 }
 
 export function initNavigation(onWeekChange) {
-    // 週移動ボタンの視認性改善（アイコンとARIAラベル設定）
     const prev = document.getElementById('prev-week');
     const next = document.getElementById('next-week');
     if (prev) {
@@ -220,7 +213,6 @@ export function initNavigation(onWeekChange) {
 }
 
 function updateNavButtons(currentWeekIndex) {
-    // ボタンの無効化状態に応じて透明度も調整し、視覚的に分かりやすくする
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
     if(prevWeekBtn) {
@@ -232,3 +224,4 @@ function updateNavButtons(currentWeekIndex) {
         nextWeekBtn.classList.toggle('opacity-60', nextWeekBtn.disabled);
     }
 }
+
