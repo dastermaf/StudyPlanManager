@@ -14,7 +14,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-default-jwt-secr
     process.exit(1);
 }
 
-// Новая проверка: MASTER_ENCRYPTION_KEY
+// Проверка безопасности MASTER_ENCRYPTION_KEY
 if (!process.env.MASTER_ENCRYPTION_KEY || process.env.MASTER_ENCRYPTION_KEY.length < 32) {
     logger.error('КРИТИЧЕСКАЯ ОШИБКА: MASTER_ENCRYPTION_KEY не установлен или имеет недостаточную длину (требуется >= 32 символов).', { src: 'server.js' });
     process.exit(1);
@@ -27,7 +27,22 @@ const port = process.env.PORT || 3000;
 logger.info('Запуск сервера...', { src: 'server.js' });
 app.set('trust proxy', 1);
 
-app.use(helmet());
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+                "default-src": ["'self'"],
+                "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+                "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+                "img-src": ["'self'", "data:", "https:"],
+                "connect-src": ["'self'", "https://script.google.com", "https://script.googleusercontent.com"],
+                "font-src": ["'self'", "https://fonts.gstatic.com"],
+            },
+        },
+    })
+);
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -41,11 +56,11 @@ app.use('/api', apiRoutes);
 
 logger.info('Middleware и маршруты настроены.', { src: 'server.js' });
 
-app.listen(port, () => {
-    logger.info(`Сервер запущен на http://localhost:${port}`, { src: 'server.js' });
+app.listen(port, '0.0.0.0', () => {
+    // ИЗМЕНЕНИЕ: Лог теперь показывает правильный хост для контейнера
+    logger.info(`Сервер запущен и слушает на 0.0.0.0:${port}`, { src: 'server.js' });
     initializeDatabase().catch(err => {
         logger.error('Не удалось инициализировать базу данных', { src: 'server.js', err: String(err && err.message || err) });
-        // Не завершаем процесс: включаем graceful degradation через страницу ошибок
         try { markDbDown(err); } catch {}
     });
 });
