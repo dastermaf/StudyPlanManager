@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン - 学習計画管理サイト</title>
+    <!-- ИСПРАВЛЕНИЕ: Скрипт для предотвращения "белой вспышки" -->
+    <script>
+        (function() {
+            try {
+                const theme = localStorage.getItem('theme');
+                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (_) {}
+        })();
+    </script>
     <link rel="icon" href="/image/favicon.png" type="image/png">
     <link rel="stylesheet" href="/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

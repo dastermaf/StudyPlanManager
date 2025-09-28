@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学習計画管理サイト</title>
+    <!-- ИСПРАВЛЕНИЕ: Скрипт для предотвращения "белой вспышки" -->
+    <script>
+        (function() {
+            try {
+                const theme = localStorage.getItem('theme');
+                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (_) {}
+        })();
+    </script>
     <link rel="icon" href="/image/favicon.png" type="image/png">
     <link rel="stylesheet" href="/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +46,6 @@
             <div class="flex items-center gap-4">
                 <div class="w-full progress-bar-bg rounded-full h-5 shadow-inner relative">
                     <div id="overall-progress-bar" class="progress-bar-fg h-5 rounded-full flex items-center justify-center text-sm font-bold text-green-900"></div>
-                    <!-- Контейнер для искорок -->
                     <div id="sparkle-container" class="sparkle-container"></div>
                 </div>
                 <span id="overall-progress-text" class="font-bold text-lg text-indigo-700 dark:text-indigo-400 w-20 text-right">0.0%</span>
@@ -75,3 +87,4 @@
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>
+

@@ -16,7 +16,7 @@ function showToast(message) {
     setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-// --- НОВАЯ ФУНКЦИЯ: Показ поздравительного окна ---
+// --- Показ поздравительного окна ---
 function showCompletionModal() {
     triggerConfetti();
     const modal = document.getElementById('completion-modal-overlay');
@@ -71,7 +71,6 @@ function saveProgress() {
     saveTimeout = setTimeout(async () => {
         try {
             await api.saveProgress(progress);
-            // Уведомляем другие вкладки (главную страницу) об изменении
             localStorage.setItem('progress-updated', Date.now());
         } catch (error) {
             console.error('進捗の保存中にエラーが発生しました:', error);
@@ -112,11 +111,6 @@ function updateChapterProgressUI() {
         bar.style.width = `${percent}%`;
         bar.textContent = percent > 10 ? `${percent}%` : '';
         text.textContent = `${percent}%`;
-
-        // Показываем модальное окно, если оба чекбокса отмечены
-        if (vod && test) {
-            showCompletionModal();
-        }
     } catch {}
 }
 
@@ -124,26 +118,36 @@ function setupProgressTracker() {
     const vodCheckbox = document.getElementById('task-vod');
     const testCheckbox = document.getElementById('task-test');
 
-    vodCheckbox.addEventListener('change', () => {
-        const wasCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
+    // ИСПРАВЛЕНИЕ: Логика для однократного показа анимации
+    const handleCheckboxChange = () => {
+        const wasCompleted = (chapterProgress.vod.checked && chapterProgress.test.checked);
+
         chapterProgress.vod.checked = vodCheckbox.checked;
         chapterProgress.vod.timestamp = vodCheckbox.checked ? new Date().toISOString() : null;
-        if (vodCheckbox.checked) showToast('VOD視聴 完了！');
+
+        chapterProgress.test.checked = testCheckbox.checked;
+        chapterProgress.test.timestamp = testCheckbox.checked ? new Date().toISOString() : null;
+
+        const isNowCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
+
+        // Показываем анимацию только в момент первого завершения
+        if (isNowCompleted && !wasCompleted && !chapterProgress.celebrationShown) {
+            showCompletionModal();
+            chapterProgress.celebrationShown = true;
+        }
+
         saveProgress();
-        const isCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
-        if (isCompleted && !wasCompleted) showCompletionModal();
         updateChapterProgressUI();
+    };
+
+    vodCheckbox.addEventListener('change', () => {
+        if (vodCheckbox.checked) showToast('VOD視聴 完了！');
+        handleCheckboxChange();
     });
 
     testCheckbox.addEventListener('change', () => {
-        const wasCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
-        chapterProgress.test.checked = testCheckbox.checked;
-        chapterProgress.test.timestamp = testCheckbox.checked ? new Date().toISOString() : null;
         if (testCheckbox.checked) showToast('テスト 完了！');
-        saveProgress();
-        const isCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
-        if (isCompleted && !wasCompleted) showCompletionModal();
-        updateChapterProgressUI();
+        handleCheckboxChange();
     });
 
     document.getElementById('note-textarea').addEventListener('input', (e) => {
@@ -190,7 +194,6 @@ async function initialize() {
     chapterNo = pathParts[2];
     titleElement.textContent = `${SUBJECTS.find(s => s.id === subjectId)?.name || ''} - 第${chapterNo}章`;
 
-    // Плавное появление страницы
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('a');
         if (link && link.href && link.target !== '_blank' && link.href.startsWith(window.location.origin)) {
@@ -204,11 +207,12 @@ async function initialize() {
         progress = await api.getProgress();
         if (!progress.lectures) progress.lectures = {};
         if (!progress.lectures[subjectId]) progress.lectures[subjectId] = {};
+        // ИСПРАВЛЕНИЕ: Добавляем celebrationShown при создании новой главы
         if (!progress.lectures[subjectId][chapterNo] || typeof progress.lectures[subjectId][chapterNo].vod !== 'object') {
             progress.lectures[subjectId][chapterNo] = {
                 vod: { checked: false, timestamp: null },
                 test: { checked: false, timestamp: null },
-                note: '', tasks: [], pinned: false
+                note: '', tasks: [], pinned: false, celebrationShown: false
             };
         }
         chapterProgress = progress.lectures[subjectId][chapterNo];
@@ -221,7 +225,6 @@ async function initialize() {
         renderTasks();
         updateChapterProgressUI();
 
-        theme.applyTheme(progress.settings?.theme || 'light');
         theme.init(saveSettings);
 
         const response = await fetch(`/api/materials?subject=${encodeURIComponent(subjectId)}&chapter=${encodeURIComponent(chapterNo)}`, { credentials: 'include' });

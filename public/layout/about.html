@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>このサイトについて - 学習計画管理サイト</title>
+    <!-- ИСПРАВЛЕНИЕ: Скрипт для предотвращения "белой вспышки" -->
+    <script>
+        (function() {
+            try {
+                const theme = localStorage.getItem('theme');
+                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (_) {}
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" href="/image/favicon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +39,7 @@
 
         <h3>プライバシー保護への取り組み</h3>
         <ul>
-            <li><strong>エンドツーエンド暗号化：</strong>講義に関する個人的なメモやテーマ設定は、あなたのパスワードから生成されるキーを使って、お使いのブラウザ上で直接暗号化されます。私たちのデータベースには、判読不能な暗号化されたデータのみが保存されます。これを復号できるのは、あなた自身がアカウントにログインしたときだけです。</li>
+            <li><strong>サーバーサイド暗号化：</strong>講義に関する個人的なメモは、あなたの個人的なキーを使って、サーバー上で直接暗号化されます。私たちのデータベースには、判読不能な暗号化されたデータのみが保存されます。これを復号できるのは、あなた自身がアカウントにログインしたときだけです。</li>
             <li><strong>最小限のデータ収集：</strong>私たちは、サービスの運営に絶対に必要な情報（ユーザー名、ハッシュ化されたパスワード、暗号化された進捗データ）のみを収集・保存します。追跡目的のCookieは使用せず、学習プロセスに関係のない個人データを収集することはありません。</li>
             <li><strong>不正アクセスからの保護：</strong>単一IPアドレスや単一デバイスからのログイン・登録試行回数を制限するなど、最新のセキュリティ対策を導入し、サービスとあなたのデータを自動化された攻撃から保護します。</li>
         </ul>
