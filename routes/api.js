@@ -39,7 +39,6 @@ function decrypt(encryptedText, key) {
         const decrypted = decipher.update(encrypted, 'binary', 'utf8') + decipher.final('utf8');
         return decrypted;
     } catch (e) {
-        // Если расшифровка не удалась, возвращаем исходный (вероятно, незашифрованный) текст
         return encryptedText;
     }
 }
@@ -51,11 +50,15 @@ function deriveKeyFromMaster(salt) {
 // --- Data Traversal for Encryption/Decryption ---
 function traverseNotes(progressData, operation) {
     if (!progressData || !progressData.lectures) return progressData;
-    const key = progressData.encryptionKey; // Ключ добавляется временно
+    const key = progressData.encryptionKey;
     if (!key) return progressData;
 
     for (const subjectId in progressData.lectures) {
         for (const chapterNo in progressData.lectures[subjectId]) {
+            // --- ИСПРАВЛЕНИЕ: Пропускаем нечисловые ключи, чтобы не шифровать служебные поля ---
+            if (isNaN(parseInt(chapterNo, 10))) {
+                continue;
+            }
             const chapter = progressData.lectures[subjectId][chapterNo];
             if (chapter && typeof chapter.note === 'string' && chapter.note) {
                 chapter.note = operation(chapter.note, key);
@@ -66,7 +69,7 @@ function traverseNotes(progressData, operation) {
 }
 // ---- Client log intake endpoint ----
 const serverLogger = require('../logger');
-const logRate = new Map(); // ip -> { count, reset }
+const logRate = new Map();
 const LOG_LIMIT_PER_MIN = 120;
 
 router.post('/log', (req, res) => {
@@ -78,14 +81,13 @@ router.post('/log', (req, res) => {
         entry.count += 1;
         logRate.set(ip, entry);
         if (entry.count > LOG_LIMIT_PER_MIN) {
-            return res.status(429).json({ ok: true }); // silently drop to not spam client
+            return res.status(429).json({ ok: true });
         }
 
         const { level = 'info', message = '', args = [], page = '', ts, ua } = req.body || {};
         const allowed = ['debug', 'info', 'warn', 'error'];
         const lvl = allowed.includes(level) ? level : 'info';
 
-        // Try to detect user from cookie token (optional)
         let user = undefined;
         try {
             const token = req.cookies?.accessToken;
@@ -129,7 +131,6 @@ router.post('/register', registerLimiter, async (req, res) => {
         }
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // --- Создание ключа шифрования ---
         const userKey = crypto.randomBytes(KEY_LENGTH);
         const salt = crypto.randomBytes(SALT_LENGTH);
         const masterDerivedKey = deriveKeyFromMaster(salt);
@@ -200,7 +201,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             res.cookie('accessToken', accessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
+                maxAge: 7 * 24 * 60 * 60 * 1000
             });
             res.redirect('/app');
         } else {
@@ -218,52 +219,27 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/user', authenticateToken, (req, res) => {
-    // Не отправляем ключ на клиент
     const { key, ...user } = req.user;
     res.json(user);
 });
 
 router.get('/progress', authenticateToken, async (req, res) => {
-    // --- ТОЧКА ДЕБАГА: Начало обработки запроса ---
-    serverLogger.info(`[DEBUG] /progress: Запрос получен для пользователя ID ${req.user.id}`, { src: 'api.progress' });
-
     try {
         const uid = req.user.id;
         const result = await pool.query('SELECT data FROM progress WHERE user_id = $1', [uid]);
 
-        // --- ТОЧКА ДЕБАГА: После запроса к БД ---
-        serverLogger.info(`[DEBUG] /progress: Результат запроса к БД получен. Найдено строк: ${result.rows.length}`, { src: 'api.progress' });
-
         if (result.rows.length > 0) {
             const progressData = result.rows[0].data;
-
-            // --- ТОЧКА ДЕБАГА: Данные перед расшифровкой ---
-            serverLogger.info(`[DEBUG] /progress: Данные из БД перед расшифровкой: ${JSON.stringify(progressData).substring(0, 500)}...`, { src: 'api.progress' });
-
             const userKey = req.user.key;
             if (!userKey) {
-                serverLogger.error(`[DEBUG] /progress: КРИТИЧЕСКАЯ ОШИБКА - отсутствует ключ шифрования для пользователя ID ${uid}`, { src: 'api.progress' });
                 return res.status(500).json({ error: 'Ключ шифрования не найден.', code: 'ENCRYPTION_KEY_MISSING' });
             }
-            // --- ТОЧКА ДЕБАГА: Ключ для расшифровки ---
-            serverLogger.info(`[DEBUG] /progress: Ключ пользователя для расшифровки получен. Длина: ${userKey.length}`, { src: 'api.progress' });
-
-            // --- ТОЧКА ДЕБАГА: Процесс расшифровки ---
             try {
                 progressData.encryptionKey = Buffer.from(req.user.key, 'hex');
                 const decryptedData = traverseNotes(progressData, decrypt);
                 delete decryptedData.encryptionKey;
-
-                serverLogger.info(`[DEBUG] /progress: Расшифровка заметок завершена успешно.`, { src: 'api.progress' });
                 return res.json(decryptedData);
-
             } catch (decryptionError) {
-                serverLogger.error(`[DEBUG] /progress: КРИТИЧЕСКАЯ ОШИБКА во время расшифровки данных`, {
-                    src: 'api.progress',
-                    userId: uid,
-                    errorMessage: decryptionError.message,
-                    errorStack: decryptionError.stack
-                });
                 return res.status(500).json({ error: 'Ошибка при обработке данных пользователя.', code: 'DECRYPTION_FAILED' });
             }
         }
@@ -274,12 +250,6 @@ router.get('/progress', authenticateToken, async (req, res) => {
         return res.status(200).json(empty);
 
     } catch (error) {
-        serverLogger.error(`[DEBUG] /progress: Непредвиденная ошибка в обработчике`, {
-            src: 'api.progress',
-            userId: req.user.id,
-            errorMessage: error.message,
-            errorStack: error.stack
-        });
         return res.status(500).json({ error: '進捗データの取得に失敗しました。', code: 'PROGRESS_LOAD_FAILED' });
     }
 });
@@ -290,7 +260,6 @@ router.post('/progress', authenticateToken, async (req, res) => {
         if (!progressData) {
             return res.status(400).json({error: "保存するデータがありません。"});
         }
-        // --- Шифрование заметок ---
         progressData.encryptionKey = Buffer.from(req.user.key, 'hex');
         const encryptedData = traverseNotes(progressData, encrypt);
         delete encryptedData.encryptionKey;
@@ -306,7 +275,6 @@ router.post('/progress', authenticateToken, async (req, res) => {
     }
 });
 
-// 教材CMSへのサーバーサイドプロキシ（CSP回避のため、同一オリジン経由で取得）
 router.get('/materials', authenticateToken, async (req, res) => {
     try {
         const subject = (req.query.subject || '').toString();
@@ -346,7 +314,6 @@ router.get('/materials', authenticateToken, async (req, res) => {
     }
 });
 
-// 画像プロキシ（CSP対応のため、同一オリジン経由で取得）
 router.get('/image', authenticateToken, async (req, res) => {
     try {
         const raw = (req.query.url || '').toString();
@@ -429,7 +396,7 @@ router.get('/image', authenticateToken, async (req, res) => {
         res.setHeader('Cache-Control', 'public, max-age=600');
         return res.status(200).send(svg);
     } catch (err) {
-        return res.status(500).send('画像プロキシエラー');
+        return res.status(500).send('画像プロксиエラー');
     }
 });
 

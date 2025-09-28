@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const logger = require('./logger');
+const logger = require('../logger');
 
 // DB health state (shared module scope)
 let dbState = { healthy: false, lastError: null };
@@ -79,13 +79,24 @@ const runDataMigration = async (client) => {
         const { user_id, data } = row;
         let needsUpdate = false;
 
-        if (data.lectures) {
+        if (data && data.lectures) {
             for (const subjectKey in data.lectures) {
-                for (const chapterKey in data.lectures[subjectKey]) {
-                    const chapterData = data.lectures[subjectKey][chapterKey];
-                    if (typeof chapterData.vod !== 'object' || chapterData.vod === null) {
-                        needsUpdate = true;
+                // --- ИСПРАВЛЕНИЕ: Удаление поврежденных данных о закреплении ---
+                if (data.lectures[subjectKey] && typeof data.lectures[subjectKey]['_subjectPinned'] === 'object') {
+                    delete data.lectures[subjectKey]['_subjectPinned'];
+                    needsUpdate = true;
+                    logger.warn(`db.js: Обнаружены и удалены поврежденные данные о закреплении для пользователя ${user_id}, предмет ${subjectKey}`, { src: 'db.js' });
+                }
 
+                for (const chapterKey in data.lectures[subjectKey]) {
+                    // --- ИСПРАВЛЕНИЕ: Обрабатываем только числовые ключи глав ---
+                    if (isNaN(parseInt(chapterKey, 10))) {
+                        continue; // Пропускаем нечисловые ключи, такие как '_subjectPinned'
+                    }
+
+                    const chapterData = data.lectures[subjectKey][chapterKey];
+                    if (chapterData && (typeof chapterData.vod !== 'object' || chapterData.vod === null)) {
+                        needsUpdate = true;
                         const newChapterData = {
                             vod: {
                                 checked: chapterData.vod || false,
@@ -149,10 +160,7 @@ const initializeDatabase = async (retries = 5) => {
                 );
             `);
 
-            // --- НОВОЕ ПОЛЕ ДЛЯ КЛЮЧА ШИФРОВАНИЯ ---
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS encryption_key_encrypted TEXT;`);
-
-            // Ensure newer columns if schema evolves (idempotent guards)
             await client.query(`ALTER TABLE progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;`);
 
             await runDataMigration(client);
@@ -160,7 +168,7 @@ const initializeDatabase = async (retries = 5) => {
             client.release();
             markDbHealthy();
             logger.info('db.js: データベースの初期化が正常に完了しました。', { src: 'db.js' });
-            return; // 成功したらループを抜ける
+            return;
         } catch (error) {
             retries--;
             const code = error && error.code;
@@ -175,10 +183,8 @@ const initializeDatabase = async (retries = 5) => {
             }
             markDbDown(error);
             if (retries === 0) {
-                // 最終的に失敗した場合はエラーをスロー（呼び出し側で握りつぶしてエラーページを出す）
                 throw new Error("データベースに接続できませんでした。");
             }
-            // 5秒待ってから再試行
             await wait(5000);
         }
     }
