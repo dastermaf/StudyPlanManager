@@ -1,62 +1,44 @@
 import { SUBJECTS } from './studyPlan.js';
 import * as api from './api.js';
 import * as theme from './theme.js';
+import { triggerConfetti, fadeInPage, fadeOutPage } from './utils.js';
 
-let SCRIPT_URL = null;
 let progress = {};
-let chapterProgress = {}; // Локальный объект для удобства
-let subjectId, chapterNo; // ID текущей главы
+let chapterProgress = {};
+let subjectId, chapterNo;
 let saveTimeout;
 
-// --- НОВАЯ ФУНКЦИЯ: Показ всплывающего уведомления (Toast) ---
 function showToast(message) {
     const toast = document.getElementById('toast-notification');
     if (!toast) return;
-
     toast.textContent = message;
     toast.classList.add('show');
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 2500);
+    setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-function log(message, ...details) {
-    console.log(`[Materials LOG] ${message}`, ...details);
+// --- НОВАЯ ФУНКЦИЯ: Показ поздравительного окна ---
+function showCompletionModal() {
+    triggerConfetti();
+    const modal = document.getElementById('completion-modal-overlay');
+    modal?.classList.add('show');
 }
 
-async function fetchConfig() {
-    if (SCRIPT_URL) return SCRIPT_URL;
-    try {
-        const response = await fetch('/api/config');
-        if (!response.ok) throw new Error('サーバーから設定を取得できませんでした。');
-        const config = await response.json();
-        if (config.cms_link) {
-            SCRIPT_URL = config.cms_link;
-            log("CMSの設定が正常に読み込まれました。");
-            return SCRIPT_URL;
-        } else {
-            throw new Error('サーバーの応答にCMSのリンクが含まれていません。');
-        }
-    } catch (error) {
-        console.error("[FATAL] CMS設定の読み込みエラー:", error);
-        return null;
-    }
+function hideCompletionModal() {
+    const modal = document.getElementById('completion-modal-overlay');
+    modal?.classList.remove('show');
 }
+
 
 function renderContent(container, data) {
     container.innerHTML = '';
-
     if (Object.keys(data).length === 0) {
         container.innerHTML = `<div class="text-center py-16 text-gray-500 dark:text-gray-400">この章に登録された教材はありません。</div>`;
         return;
     }
-
     for (const lessonTitle in data) {
         const lessonElement = document.createElement('section');
         lessonElement.className = 'bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8';
         let contentHtml = `<h2 class="text-2xl font-bold text-indigo-800 dark:text-indigo-300 mb-4">${lessonTitle}</h2><div class="space-y-3">`;
-
         data[lessonTitle].forEach(item => {
             switch (item.type) {
                 case 'header':
@@ -74,7 +56,6 @@ function renderContent(container, data) {
                     break;
             }
         });
-
         contentHtml += `</div>`;
         lessonElement.innerHTML = contentHtml;
         container.appendChild(lessonElement);
@@ -82,10 +63,7 @@ function renderContent(container, data) {
 }
 
 function renderError(container, message) {
-    container.innerHTML = `<div class="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-200 p-4 rounded-md">
-        <h4 class="font-bold">教材の読み込みに失敗しました。</h4>
-        <p>${message}</p>
-    </div>`;
+    container.innerHTML = `<div class="bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-700 dark:text-red-200 p-4 rounded-md"><h4>教材の読み込みに失敗しました。</h4><p>${message}</p></div>`;
 }
 
 function saveProgress() {
@@ -93,7 +71,8 @@ function saveProgress() {
     saveTimeout = setTimeout(async () => {
         try {
             await api.saveProgress(progress);
-            log("進捗がサーバーに保存されました。");
+            // Уведомляем другие вкладки (главную страницу) об изменении
+            localStorage.setItem('progress-updated', Date.now());
         } catch (error) {
             console.error('進捗の保存中にエラーが発生しました:', error);
         }
@@ -117,15 +96,10 @@ function renderTasks() {
     chapterProgress.tasks.forEach((task, index) => {
         const taskEl = document.createElement('div');
         taskEl.className = 'flex items-center bg-gray-50 dark:bg-gray-700 p-2 rounded';
-        taskEl.innerHTML = `
-            <input type="checkbox" data-task-index="${index}" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" ${task.completed ? 'checked' : ''}>
-            <span class="ml-2 text-sm flex-grow ${task.completed ? 'line-through text-gray-500' : 'dark:text-gray-200'}">${task.text}</span>
-            <button data-task-index="${index}" class="text-red-500 hover:text-red-700 text-xs px-1">削除</button>
-        `;
+        taskEl.innerHTML = `<input type="checkbox" data-task-index="${index}" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" ${task.completed ? 'checked' : ''}><span class="ml-2 text-sm flex-grow ${task.completed ? 'line-through text-gray-500' : 'dark:text-gray-200'}">${task.text}</span><button data-task-index="${index}" class="text-red-500 hover:text-red-700 text-xs px-1">削除</button>`;
         todoList.appendChild(taskEl);
     });
 }
-
 
 function updateChapterProgressUI() {
     try {
@@ -138,67 +112,66 @@ function updateChapterProgressUI() {
         bar.style.width = `${percent}%`;
         bar.textContent = percent > 10 ? `${percent}%` : '';
         text.textContent = `${percent}%`;
+
+        // Показываем модальное окно, если оба чекбокса отмечены
+        if (vod && test) {
+            showCompletionModal();
+        }
     } catch {}
 }
 
 function setupProgressTracker() {
     const vodCheckbox = document.getElementById('task-vod');
     const testCheckbox = document.getElementById('task-test');
-    const noteTextarea = document.getElementById('note-textarea');
-    const addTaskBtn = document.getElementById('add-task-btn');
-    const newTaskInput = document.getElementById('new-task-input');
-    const todoList = document.getElementById('todo-list');
-
-    if (!vodCheckbox || !testCheckbox || !noteTextarea || !addTaskBtn) return;
-
-    vodCheckbox.checked = chapterProgress.vod.checked;
-    testCheckbox.checked = chapterProgress.test.checked;
-    noteTextarea.value = chapterProgress.note;
-    updateChapterProgressUI();
 
     vodCheckbox.addEventListener('change', () => {
+        const wasCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
         chapterProgress.vod.checked = vodCheckbox.checked;
         chapterProgress.vod.timestamp = vodCheckbox.checked ? new Date().toISOString() : null;
-        if (vodCheckbox.checked) showToast('VOD視聴 完了！'); // Показываем уведомление
+        if (vodCheckbox.checked) showToast('VOD視聴 完了！');
         saveProgress();
+        const isCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
+        if (isCompleted && !wasCompleted) showCompletionModal();
         updateChapterProgressUI();
     });
+
     testCheckbox.addEventListener('change', () => {
+        const wasCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
         chapterProgress.test.checked = testCheckbox.checked;
         chapterProgress.test.timestamp = testCheckbox.checked ? new Date().toISOString() : null;
-        if (testCheckbox.checked) showToast('テスト 完了！'); // Показываем уведомление
+        if (testCheckbox.checked) showToast('テスト 完了！');
         saveProgress();
+        const isCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
+        if (isCompleted && !wasCompleted) showCompletionModal();
         updateChapterProgressUI();
     });
-    noteTextarea.addEventListener('input', () => {
-        chapterProgress.note = noteTextarea.value;
+
+    document.getElementById('note-textarea').addEventListener('input', (e) => {
+        chapterProgress.note = e.target.value;
         saveProgress();
     });
 
-    addTaskBtn.addEventListener('click', () => {
-        if (newTaskInput.value.trim()) {
+    document.getElementById('add-task-btn').addEventListener('click', () => {
+        const input = document.getElementById('new-task-input');
+        if (input.value.trim()) {
             if(!chapterProgress.tasks) chapterProgress.tasks = [];
-            chapterProgress.tasks.push({ text: newTaskInput.value.trim(), completed: false });
-            newTaskInput.value = '';
+            chapterProgress.tasks.push({ text: input.value.trim(), completed: false });
+            input.value = '';
             saveProgress();
             renderTasks();
         }
     });
 
-    todoList.addEventListener('click', (e) => {
+    document.getElementById('todo-list').addEventListener('click', (e) => {
         const index = e.target.dataset.taskIndex;
         if (index === undefined) return;
-
-        if (e.target.type === 'checkbox') {
-            chapterProgress.tasks[index].completed = e.target.checked;
-        } else if (e.target.tagName === 'BUTTON') {
-            chapterProgress.tasks.splice(index, 1);
-        }
+        if (e.target.type === 'checkbox') chapterProgress.tasks[index].completed = e.target.checked;
+        else if (e.target.tagName === 'BUTTON') chapterProgress.tasks.splice(index, 1);
         saveProgress();
         renderTasks();
     });
 
-    renderTasks();
+    document.getElementById('close-modal-btn')?.addEventListener('click', hideCompletionModal);
 }
 
 async function initialize() {
@@ -213,17 +186,19 @@ async function initialize() {
     const container = document.getElementById('materials-container');
 
     const pathParts = window.location.pathname.split('/').filter(p => p);
-    if (pathParts.length < 3) {
-        renderError(container, "URLが無効です。");
-        return;
-    }
     subjectId = pathParts[1];
     chapterNo = pathParts[2];
+    titleElement.textContent = `${SUBJECTS.find(s => s.id === subjectId)?.name || ''} - 第${chapterNo}章`;
 
-    const subject = SUBJECTS.find(s => s.id === subjectId);
-    if (subject) {
-        titleElement.textContent = `${subject.name} - 第${chapterNo}章`;
-    }
+    // Плавное появление страницы
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith(window.location.origin)) {
+            e.preventDefault();
+            fadeOutPage(link.href);
+        }
+    });
+    fadeInPage();
 
     try {
         progress = await api.getProgress();
@@ -233,35 +208,32 @@ async function initialize() {
             progress.lectures[subjectId][chapterNo] = {
                 vod: { checked: false, timestamp: null },
                 test: { checked: false, timestamp: null },
-                note: '',
-                tasks: [],
-                pinned: false
+                note: '', tasks: [], pinned: false
             };
         }
         chapterProgress = progress.lectures[subjectId][chapterNo];
 
+        document.getElementById('task-vod').checked = chapterProgress.vod.checked;
+        document.getElementById('task-test').checked = chapterProgress.test.checked;
+        document.getElementById('note-textarea').value = chapterProgress.note;
+
         setupProgressTracker();
+        renderTasks();
+        updateChapterProgressUI();
+
         theme.applyTheme(progress.settings?.theme || 'light');
         theme.init(saveSettings);
-    } catch (e) {
-        console.error("進捗データの読み込みに失敗しました:", e);
-    }
 
-    try {
-        const requestUrl = `/api/materials?subject=${encodeURIComponent(subjectId)}&chapter=${encodeURIComponent(chapterNo)}`;
-        log(`APIにリクエストを送信します: ${requestUrl}`);
-        const response = await fetch(requestUrl, { credentials: 'include' });
-        if (!response.ok) throw new Error(`ネットワークエラー (ステータス: ${response.status})`);
+        const response = await fetch(`/api/materials?subject=${encodeURIComponent(subjectId)}&chapter=${encodeURIComponent(chapterNo)}`, { credentials: 'include' });
+        if (!response.ok) throw new Error(`Network error: ${response.status}`);
         const data = await response.json();
-        if (data && data.error && !data.content) throw new Error(`スクリプトエラー: ${data.details || data.error}`);
-
+        if (data && data.error && !data.content) throw new Error(`API error: ${data.details || data.error}`);
         renderContent(container, data);
-        log("コンテンツが正常に表示されました。");
 
     } catch (error) {
-        log("致命的なエラー：教材の読み込み中:", error);
         renderError(container, error.message);
     }
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
+

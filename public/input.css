@@ -19,19 +19,15 @@ body {
 .progress-bar-bg { @apply bg-gray-200 dark:bg-gray-700; }
 .progress-bar-fg {
     background-color: #4ade80; /* green-400 */
-    @apply transition-all duration-500;
+    @apply transition-all duration-500 ease-out; /* Плавный переход */
 }
 .important-note {
     @apply bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 dark:bg-yellow-900/50 dark:border-yellow-500 dark:text-yellow-100;
 }
 
 /* Lecture Grid Styles */
-.lecture-grid {
-    @apply grid grid-cols-3 sm:grid-cols-5 gap-2;
-}
-.lecture-box {
-    @apply flex justify-center items-center h-10 rounded-md font-medium cursor-pointer transition-all duration-200 border-2 border-transparent relative px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis min-w-0;
-}
+.lecture-grid { @apply grid grid-cols-3 sm:grid-cols-5 gap-2; }
+.lecture-box { @apply flex justify-center items-center h-10 rounded-md font-medium cursor-pointer transition-all duration-200 border-2 border-transparent relative px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis min-w-0; }
 
 /* --- Color States --- */
 .lecture-box.optional { @apply bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300; }
@@ -41,51 +37,43 @@ body {
 .lecture-box.in-progress { @apply bg-yellow-100 text-yellow-800 border-yellow-400 dark:bg-yellow-900/50 dark:text-yellow-200 dark:border-yellow-500; }
 .lecture-box.in-progress:hover { @apply bg-yellow-200 dark:bg-yellow-900; }
 .lecture-box.completed { @apply bg-green-100 text-green-800 border-green-400 dark:bg-green-900/50 dark:text-green-200 dark:border-green-500; }
-.lecture-box.completed::after {
-    content: '✔';
-    @apply absolute -top-2 -right-1.5 text-lg text-green-600 dark:text-green-400;
-}
+.lecture-box.completed::after { content: '✔'; @apply absolute -top-2 -right-1.5 text-lg text-green-600 dark:text-green-400; }
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ МОТИВАЦИИ --- */
 
 /* Стили для Конфетти */
-.confetti-container {
-    @apply pointer-events-none fixed top-0 left-0 w-full h-full overflow-hidden z-50;
-}
-.confetti-particle {
-    @apply absolute;
-    width: 10px;
-    height: 10px;
-    opacity: 0;
-    animation: fall 3s ease-in-out forwards;
-}
+.confetti-container { @apply pointer-events-none fixed top-0 left-0 w-full h-full overflow-hidden z-50; }
+.confetti-particle { @apply absolute; width: 10px; height: 20px; opacity: 0; animation: fall 4s ease-in-out forwards; }
 @keyframes fall {
     0% { transform: translateY(-10vh) rotateZ(0deg); opacity: 1; }
     100% { transform: translateY(110vh) rotateZ(720deg); opacity: 0; }
 }
 
-/* Стили для всплывающего уведомления (Toast) */
-.toast-notification {
-    @apply fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-xl text-lg font-semibold;
-    transform: translateY(200%);
-    transition: transform 0.5s ease-in-out;
-}
-.toast-notification.show {
-    transform: translateY(0);
+/* Стили для поздравительного модального окна */
+.completion-modal-overlay { @apply fixed inset-0 bg-black/60 flex items-center justify-center z-40 opacity-0 transition-opacity duration-300 pointer-events-none; }
+.completion-modal-overlay.show { @apply opacity-100 pointer-events-auto; }
+.completion-modal-content { @apply bg-white dark:bg-gray-800 rounded-2xl p-8 text-center shadow-2xl transform scale-90 transition-transform duration-300; }
+.completion-modal-overlay.show .completion-modal-content { @apply scale-100; }
+
+/* Искорки для прогресс-бара */
+.sparkle-container { @apply absolute h-full top-0 left-0 w-full overflow-hidden pointer-events-none; }
+.sparkle { @apply absolute bg-yellow-300 rounded-full; opacity: 0; animation: sparkle-anim 0.7s ease-out forwards; }
+@keyframes sparkle-anim {
+    0% { transform: scale(0) translateY(0); opacity: 0.8; }
+    100% { transform: scale(1.5) translateY(-20px); opacity: 0; }
 }
 
+/* Плавный переход между страницами */
+.page-transition-overlay { @apply fixed top-0 left-0 w-full h-full bg-gray-900 z-50 transition-opacity duration-300 ease-in-out opacity-100 pointer-events-none; }
+.page-transition-overlay.fade-in { @apply opacity-100; }
+.page-transition-overlay:not(.fade-in) { @apply opacity-0; }
+
+/* Стили для всплывающего уведомления (Toast) */
+.toast-notification { @apply fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-xl text-lg font-semibold; transform: translateY(200%); transition: transform 0.5s ease-in-out; }
+.toast-notification.show { transform: translateY(0); }
+
 /* Улучшенные стили для чекбоксов */
-.custom-checkbox {
-    @apply appearance-none h-6 w-6 border-2 border-gray-300 dark:border-gray-600 rounded-md checked:bg-indigo-600 checked:border-transparent focus:outline-none transition duration-200 cursor-pointer;
-    position: relative;
-}
-.custom-checkbox:checked::after {
-    content: '✔';
-    @apply absolute text-white text-sm;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-.custom-checkbox-label {
-    @apply flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors;
-}
+.custom-checkbox { @apply appearance-none h-6 w-6 border-2 border-gray-300 dark:border-gray-600 rounded-md checked:bg-indigo-600 checked:border-transparent focus:outline-none transition duration-200 cursor-pointer relative; }
+.custom-checkbox:checked::after { content: '✔'; @apply absolute text-white text-sm; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.custom-checkbox-label { @apply flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors; }
+

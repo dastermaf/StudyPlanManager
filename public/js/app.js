@@ -2,6 +2,7 @@ import * as api from './api.js';
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
+import { fadeInPage, fadeOutPage } from './utils.js';
 
 async function initialize() {
     try {
@@ -21,7 +22,6 @@ async function initialize() {
         let saveTimeout;
 
         function saveProgress() {
-            // UI側（ui.js）からも呼び出せるようにするためにconfigureProgressで渡す
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
                 try {
@@ -51,13 +51,21 @@ async function initialize() {
             }
         }
 
+        // --- НОВАЯ ЛОГИКА: Плавные переходы ---
+        document.body.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (link && link.href && link.target !== '_blank' && link.href.startsWith(window.location.origin)) {
+                e.preventDefault();
+                fadeOutPage(link.href);
+            }
+        });
+        fadeInPage(); // Появление страницы при загрузке
+
         document.getElementById('logout-button')?.addEventListener('click', auth.logout);
         theme.init(saveSettings);
         ui.initNavigation(handleWeekChange);
 
-        // UIに進捗参照と保存関数を渡す（ピン留め操作から保存するため）
         ui.configureProgress(progress, saveProgress);
-
         ui.showMainContent(user.username);
         theme.applyTheme(progress.settings?.theme || 'light');
         ui.renderWeek(currentWeekIndex, progress.lectures);
@@ -65,7 +73,7 @@ async function initialize() {
 
     } catch (e) {
         console.error("Критическая ошибка инициализации:", e);
-        window.location.href = '/';
+        // window.location.href = '/';
     }
 }
 
