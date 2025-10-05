@@ -34,6 +34,7 @@ export function triggerConfetti() {
         particle.className = 'confetti-particle';
         particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
+        // Появление с двух сторон
         const side = Math.random() > 0.5 ? 'left' : 'right';
         if (side === 'left') {
             particle.style.left = `${Math.random() * 25}%`;
@@ -61,14 +62,15 @@ function ensureOverlay() {
     }
 }
 
-// --- 変更：fadeOutPageを単純なナビゲーションに置き換え ---
+// --- 変更: fadeOutPageを単純なナビゲーションに置き換え ---
 export function fadeOutPage(url) {
-    // アニメーションを削除し、直接ページ遷移を実行する
+    // この関数はもう何もしません。ブラウザのデフォルトの動作が使用されます。
     window.location.href = url;
 }
 
 export function fadeInPage() {
     ensureOverlay();
+    // Даем браузеру время на отрисовку страницы перед началом анимации
     setTimeout(() => {
         pageTransitionOverlay.classList.remove('fade-in');
     }, 100);
