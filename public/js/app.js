@@ -2,7 +2,7 @@ import * as api from './api.js';
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
-import { fadeInPage } from './utils.js'; // fadeOutPageのインポートを削除
+import { fadeInPage } from './utils.js';
 
 async function initialize() {
     try {
@@ -51,8 +51,7 @@ async function initialize() {
             }
         }
 
-        // --- 変更: 不安定なクリックハンドラを完全に削除 ---
-        fadeInPage(); // Появление страницы при загрузке
+        fadeInPage();
 
         document.getElementById('logout-button')?.addEventListener('click', auth.logout);
         theme.init(saveSettings);
@@ -66,7 +65,9 @@ async function initialize() {
 
     } catch (e) {
         console.error("Критическая ошибка инициализации:", e);
-        // window.location.href = '/';
+    } finally {
+        // --- 変更: すべての処理が完了した後にページを表示 ---
+        document.body.style.visibility = 'visible';
     }
 }
 

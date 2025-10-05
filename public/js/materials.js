@@ -1,7 +1,7 @@
 import { SUBJECTS } from './studyPlan.js';
 import * as api from './api.js';
 import * as theme from './theme.js';
-import { triggerConfetti, fadeInPage } from './utils.js'; // fadeOutPageのインポートを削除
+import { triggerConfetti, fadeInPage } from './utils.js';
 
 let progress = {};
 let chapterProgress = {};
@@ -16,16 +16,22 @@ function showToast(message) {
     setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-// --- Показ поздравительного окна ---
 function showCompletionModal() {
     triggerConfetti();
     const modal = document.getElementById('completion-modal-overlay');
-    modal?.classList.add('show');
+    if (modal) {
+        modal.style.display = 'flex'; // display: none を上書き
+        setTimeout(() => modal.classList.add('show'), 10);
+    }
 }
 
 function hideCompletionModal() {
     const modal = document.getElementById('completion-modal-overlay');
-    modal?.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('show');
+        // アニメーションが終わってから非表示にする
+        setTimeout(() => { modal.style.display = 'none'; }, 300);
+    }
 }
 
 
@@ -118,7 +124,6 @@ function setupProgressTracker() {
     const vodCheckbox = document.getElementById('task-vod');
     const testCheckbox = document.getElementById('task-test');
 
-    // ИСПРАВЛЕНИЕ: Логика для однократного показа анимации
     const handleCheckboxChange = () => {
         const wasCompleted = (chapterProgress.vod.checked && chapterProgress.test.checked);
 
@@ -130,7 +135,6 @@ function setupProgressTracker() {
 
         const isNowCompleted = chapterProgress.vod.checked && chapterProgress.test.checked;
 
-        // Показываем анимацию только в момент первого завершения
         if (isNowCompleted && !wasCompleted && !chapterProgress.celebrationShown) {
             showCompletionModal();
             chapterProgress.celebrationShown = true;
@@ -194,14 +198,12 @@ async function initialize() {
     chapterNo = pathParts[2];
     titleElement.textContent = `${SUBJECTS.find(s => s.id === subjectId)?.name || ''} - 第${chapterNo}章`;
 
-    // --- 変更: 不安定なクリックハンドラを完全に削除 ---
     fadeInPage();
 
     try {
         progress = await api.getProgress();
         if (!progress.lectures) progress.lectures = {};
         if (!progress.lectures[subjectId]) progress.lectures[subjectId] = {};
-        // ИСПРАВЛЕНИЕ: Добавляем celebrationShown при создании новой главы
         if (!progress.lectures[subjectId][chapterNo] || typeof progress.lectures[subjectId][chapterNo].vod !== 'object') {
             progress.lectures[subjectId][chapterNo] = {
                 vod: { checked: false, timestamp: null },
@@ -229,6 +231,9 @@ async function initialize() {
 
     } catch (error) {
         renderError(container, error.message);
+    } finally {
+        // --- 変更: すべての処理が完了した後にページを表示 ---
+        document.body.style.visibility = 'visible';
     }
 }
 

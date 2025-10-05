@@ -234,8 +234,10 @@ async function initialize() {
         if (!window.location.pathname.includes('/error')) {
             window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
         }
+    } finally {
+        // --- 変更: すべての処理が完了した後にページを表示 ---
+        document.body.style.visibility = 'visible';
     }
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
-
