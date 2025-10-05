@@ -1,4 +1,4 @@
-// --- Утилита для анимации чисел ---
+// --- ユーティリティ：数値のアニメーション ---
 export function animateValue(obj, start, end, duration) {
     let startTimestamp = null;
     const step = (timestamp) => {
@@ -17,7 +17,7 @@ export function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-// --- Утилита для создания Конфетти ---
+// --- ユーティリティ：紙吹雪の作成 ---
 export function triggerConfetti() {
     const container = document.getElementById('confetti-container') || document.createElement('div');
     if (!container.id) {
@@ -34,7 +34,6 @@ export function triggerConfetti() {
         particle.className = 'confetti-particle';
         particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-        // Появление с двух сторон
         const side = Math.random() > 0.5 ? 'left' : 'right';
         if (side === 'left') {
             particle.style.left = `${Math.random() * 25}%`;
@@ -50,7 +49,7 @@ export function triggerConfetti() {
     setTimeout(() => container.innerHTML = '', 3000);
 }
 
-// --- Утилиты для плавных переходов ---
+// --- ユーティリティ：ページ遷移 ---
 let pageTransitionOverlay;
 
 function ensureOverlay() {
@@ -62,17 +61,14 @@ function ensureOverlay() {
     }
 }
 
+// --- 変更：fadeOutPageを単純なナビゲーションに置き換え ---
 export function fadeOutPage(url) {
-    ensureOverlay();
-    pageTransitionOverlay.classList.add('fade-in');
-    setTimeout(() => {
-        window.location.href = url;
-    }, 400); // Должно совпадать с длительностью анимации
+    // アニメーションを削除し、直接ページ遷移を実行する
+    window.location.href = url;
 }
 
 export function fadeInPage() {
     ensureOverlay();
-    // Даем браузеру время на отрисовку страницы перед началом анимации
     setTimeout(() => {
         pageTransitionOverlay.classList.remove('fade-in');
     }, 100);

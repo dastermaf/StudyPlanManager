@@ -2,7 +2,7 @@ import * as api from './api.js';
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as theme from './theme.js';
-import { fadeInPage, fadeOutPage } from './utils.js';
+import { fadeInPage } from './utils.js'; // fadeOutPageをインポートから削除
 
 async function initialize() {
     try {
@@ -27,7 +27,7 @@ async function initialize() {
                 try {
                     await api.saveProgress(progress);
                 } catch (error) {
-                    console.error('Ошибка сохранения прогресса:', error);
+                    console.error('プログレスの保存エラー:', error);
                 }
             }, 1000);
         }
@@ -51,15 +51,14 @@ async function initialize() {
             }
         }
 
-        // --- НОВАЯ ЛОГИКА: Плавные переходы ---
+        // --- 変更：不安定なfadeOutPageの呼び出しを削除 ---
         document.body.addEventListener('click', (e) => {
             const link = e.target.closest('a');
-            if (link && link.href && link.target !== '_blank' && link.href.startsWith(window.location.origin)) {
-                e.preventDefault();
-                fadeOutPage(link.href);
+            if (link && link.href && link.target !== '_blank' && link.href.startsWith(window.location.origin) && !link.href.includes('javascript:')) {
+                // 通常のブラウザナビゲーションを妨げないようにする
             }
         });
-        fadeInPage(); // Появление страницы при загрузке
+        fadeInPage(); // ページロード時のフェードイン
 
         document.getElementById('logout-button')?.addEventListener('click', auth.logout);
         theme.init(saveSettings);
@@ -72,8 +71,7 @@ async function initialize() {
         ui.updateOverallProgress(progress.lectures);
 
     } catch (e) {
-        console.error("Критическая ошибка инициализации:", e);
-        // window.location.href = '/';
+        console.error("初期化中の致命的なエラー:", e);
     }
 }
 
