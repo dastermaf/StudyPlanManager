@@ -201,12 +201,6 @@ function exportData(progress) {
 }
 
 async function initialize() {
-    // 変更: ページコンテナを即座に表示
-    const container = document.getElementById('page-container');
-    if (container) {
-        container.style.opacity = '1';
-    }
-
     try {
         await api.getCurrentUser();
     } catch (e) {

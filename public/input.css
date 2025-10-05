@@ -7,6 +7,27 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
+/* --- 変更: FOUCを防ぐためのルール --- */
+#page-container {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* --- 変更: ローディングスピナーのスタイル --- */
+.loader-container {
+    @apply flex justify-center items-center py-16;
+}
+.loader {
+    @apply w-12 h-12 border-4 border-indigo-200 rounded-full animate-spin;
+    /* 変更: ダークモードでも見えるように回転部分の色を修正 */
+    border-top-color: #6366f1; /* indigo-500 */
+}
+.dark .loader {
+    border-color: #3730a3; /* indigo-800 */
+    border-top-color: #818cf8; /* indigo-400 */
+}
+
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { @apply bg-gray-100; }
@@ -76,11 +97,3 @@ body {
 .custom-checkbox { @apply appearance-none h-6 w-6 border-2 border-gray-300 dark:border-gray-600 rounded-md checked:bg-indigo-600 checked:border-transparent focus:outline-none transition duration-200 cursor-pointer relative; }
 .custom-checkbox:checked::after { content: '✔'; @apply absolute text-white text-sm; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 .custom-checkbox-label { @apply flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors; }
-
-/* --- Стили для индикатора загрузки --- */
-.loader {
-    @apply w-12 h-12 border-4 border-indigo-200 dark:border-indigo-700 border-t-indigo-500 rounded-full animate-spin;
-}
-.loader-container {
-    @apply flex justify-center items-center py-16;
-}
