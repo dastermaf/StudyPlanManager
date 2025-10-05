@@ -8,7 +8,6 @@ const apiRoutes = require('./routes/api');
 const pageRoutes = require('./routes/pages');
 const logger = require('./logger');
 
-// --- 変更開始: サーバーを起動するための関数 ---
 async function startServer() {
     // JWT_SECRETのセキュリティチェック
     if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-default-jwt-secret-key-for-planner') {
@@ -28,13 +27,15 @@ async function startServer() {
     logger.info('サーバーを起動しています...', { src: 'server.js' });
     app.set('trust proxy', 1);
 
+    // --- 変更開始: helmetのCSP設定を修正 ---
     app.use(
         helmet({
             contentSecurityPolicy: {
                 directives: {
                     ...helmet.contentSecurityPolicy.getDefaultDirectives(),
                     "default-src": ["'self'"],
-                    "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+                    // ログで特定された2つのハッシュをscript-srcに追加
+                    "script-src": ["'self'", "https://cdn.jsdelivr.net", "'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM='", "'sha256-UyMWDlOGeCJ35SOPqVr+NfGfCYjIzihHd/kKZTbj+DY='"],
                     "style-src": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
                     "img-src": ["'self'", "data:", "https:"],
                     "connect-src": ["'self'", "https://script.google.com", "https://script.googleusercontent.com"],
@@ -43,6 +44,7 @@ async function startServer() {
             },
         })
     );
+    // --- 変更終了 ---
 
     app.use(cors());
     app.use(express.json({ limit: '2mb' }));
@@ -57,23 +59,15 @@ async function startServer() {
 
     logger.info('ミドルウェアとルートが設定されました。', { src: 'server.js' });
 
-    // データベースを初期化し、準備が整うまで待機します
     try {
         await initializeDatabase();
-
-        // データベースの初期化が成功した後にのみ、サーバーを起動します
         app.listen(port, '0.0.0.0', () => {
             logger.info(`サーバーが起動し、0.0.0.0:${port}でリッスンしています`, { src: 'server.js' });
         });
-
     } catch (err) {
         logger.error('すべての試行の後、データベースの初期化に失敗しました。サーバーは起動しません。', { src: 'server.js', err: String(err && err.message || err) });
-        // 致命的なDBエラーの場合、アプリケーションは終了し、
-        // Railwayが再起動を試みます。
         process.exit(1);
     }
 }
-// --- 変更終了 ---
 
-// 非同期の起動関数を実行します
 startServer();

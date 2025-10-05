@@ -7,10 +7,8 @@ healthcheckPath = "/"
 healthcheckTimeout = 100
 
 [http.headers]
-# --- 変更: インラインスクリプトの実行を許可するために2つのハッシュ値を追加 ---
-"Content-Security-Policy" = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM=' 'sha256-UyMWDlOGeCJ35SOPqVr+NfGfCYjIzihHd/kKZTbj+DY='; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self' https://fonts.gstatic.com;"
-# これらのヘッダーは、セキュリティのための標準的なベストプラクティスです。
+# --- 変更: 競合するContent-Security-Policyディレクティブを削除 ---
+# CSPはserver.jsのhelmetミドルウェアによって管理されるようになります
 "X-Frame-Options" = "DENY"
 "X-Content-Type-Options" = "nosniff"
-# このヘッダーは、favicon.icoのエラーを修正するために重要です
 "Cross-Origin-Resource-Policy" = "same-site"
