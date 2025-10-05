@@ -5,14 +5,18 @@ import * as theme from './theme.js';
 import { fadeInPage } from './utils.js';
 
 async function initialize() {
+    // 変更: ページコンテナを即座に表示
+    const container = document.getElementById('page-container');
+    if (container) {
+        container.style.opacity = '1';
+    }
+
     try {
         const user = await api.getCurrentUser();
         if (!user) {
             window.location.href = '/';
             return;
         }
-
-        document.getElementById('main-container')?.classList.remove('hidden');
 
         const progress = await api.getProgress() || { settings: { theme: 'light', currentWeekIndex: 0 }, lectures: {} };
         if (!progress.settings) progress.settings = { theme: 'light', currentWeekIndex: 0 };
@@ -65,12 +69,6 @@ async function initialize() {
 
     } catch (e) {
         console.error("Критическая ошибка инициализации:", e);
-    } finally {
-        // --- 変更: コンテナをフェードインさせる ---
-        const container = document.getElementById('page-container');
-        if (container) {
-            container.style.opacity = '1';
-        }
     }
 }
 

@@ -201,6 +201,12 @@ function exportData(progress) {
 }
 
 async function initialize() {
+    // 変更: ページコンテナを即座に表示
+    const container = document.getElementById('page-container');
+    if (container) {
+        container.style.opacity = '1';
+    }
+
     try {
         await api.getCurrentUser();
     } catch (e) {
@@ -223,12 +229,6 @@ async function initialize() {
         console.error("進捗データの読み込みに失敗しました:", e);
         if (!window.location.pathname.includes('/error')) {
             window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
-        }
-    } finally {
-        // --- 変更: コンテナをフェードインさせる ---
-        const container = document.getElementById('page-container');
-        if (container) {
-            container.style.opacity = '1';
         }
     }
 }

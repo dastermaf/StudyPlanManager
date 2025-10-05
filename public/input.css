@@ -77,3 +77,10 @@ body {
 .custom-checkbox:checked::after { content: '✔'; @apply absolute text-white text-sm; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 .custom-checkbox-label { @apply flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors; }
 
+/* --- Стили для индикатора загрузки --- */
+.loader {
+    @apply w-12 h-12 border-4 border-indigo-200 dark:border-indigo-700 border-t-indigo-500 rounded-full animate-spin;
+}
+.loader-container {
+    @apply flex justify-center items-center py-16;
+}

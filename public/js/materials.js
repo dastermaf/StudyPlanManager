@@ -33,7 +33,6 @@ function hideCompletionModal() {
     }
 }
 
-
 function renderContent(container, data) {
     container.innerHTML = '';
     if (Object.keys(data).length === 0) {
@@ -182,6 +181,12 @@ function setupProgressTracker() {
 }
 
 async function initialize() {
+    // 変更: ページコンテナを即座に表示
+    const pageContainer = document.getElementById('page-container');
+    if (pageContainer) {
+        pageContainer.style.opacity = '1';
+    }
+
     try {
         await api.getCurrentUser();
     } catch (e) {
@@ -226,16 +231,12 @@ async function initialize() {
         if (!response.ok) throw new Error(`Network error: ${response.status}`);
         const data = await response.json();
         if (data && data.error && !data.content) throw new Error(`API error: ${data.details || data.error}`);
+
+        // 変更: データがロードされた後にのみコンテンツを描画
         renderContent(container, data);
 
     } catch (error) {
         renderError(container, error.message);
-    } finally {
-        // --- 変更: コンテナをフェードインさせる ---
-        const container = document.getElementById('page-container');
-        if (container) {
-            container.style.opacity = '1';
-        }
     }
 }
 
