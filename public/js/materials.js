@@ -20,7 +20,7 @@ function showCompletionModal() {
     triggerConfetti();
     const modal = document.getElementById('completion-modal-overlay');
     if (modal) {
-        modal.style.display = 'flex'; // display: none を上書き
+        modal.style.display = 'flex';
         setTimeout(() => modal.classList.add('show'), 10);
     }
 }
@@ -29,7 +29,6 @@ function hideCompletionModal() {
     const modal = document.getElementById('completion-modal-overlay');
     if (modal) {
         modal.classList.remove('show');
-        // アニメーションが終わってから非表示にする
         setTimeout(() => { modal.style.display = 'none'; }, 300);
     }
 }
@@ -232,8 +231,11 @@ async function initialize() {
     } catch (error) {
         renderError(container, error.message);
     } finally {
-        // --- 変更: すべての処理が完了した後にページを表示 ---
-        document.body.style.visibility = 'visible';
+        // --- 変更: コンテナをフェードインさせる ---
+        const container = document.getElementById('page-container');
+        if (container) {
+            container.style.opacity = '1';
+        }
     }
 }
 

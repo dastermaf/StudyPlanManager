@@ -66,8 +66,11 @@ async function initialize() {
     } catch (e) {
         console.error("Критическая ошибка инициализации:", e);
     } finally {
-        // --- 変更: すべての処理が完了した後にページを表示 ---
-        document.body.style.visibility = 'visible';
+        // --- 変更: コンテナをフェードインさせる ---
+        const container = document.getElementById('page-container');
+        if (container) {
+            container.style.opacity = '1';
+        }
     }
 }
 

@@ -2,23 +2,19 @@ import * as api from './api.js';
 import * as theme from './theme.js';
 import { SUBJECTS } from './studyPlan.js';
 
-// Глобальные переменные для хранения инстансов графиков, чтобы избежать дублирования
 let activityChartInstance = null;
 let subjectsChartInstance = null;
 
-// --- ИСПРАВЛЕНИЕ: Более надежная функция для расчета ключевых показателей ---
 function calculateKpiData(progress) {
     let totalTasks = 0;
     let completedTasks = 0;
     let totalPossibleTasks = 0;
     const subjectProgress = {};
 
-    // 1. Сначала подсчитываем общее количество возможных задач из статического списка
     SUBJECTS.forEach(subject => {
         totalPossibleTasks += (subject.totalLectures || 0) * 2; // VOD + Test
     });
 
-    // 2. Итерируемся по РЕАЛЬНЫМ данным о прогрессе пользователя
     if (progress && progress.lectures) {
         SUBJECTS.forEach(subjectInfo => {
             const subjectData = progress.lectures[subjectInfo.id];
@@ -29,7 +25,7 @@ function calculateKpiData(progress) {
 
             let subjectCompletedTasks = 0;
             for (const chapterKey in subjectData) {
-                if (isNaN(parseInt(chapterKey, 10))) continue; // Пропускаем служебные поля
+                if (isNaN(parseInt(chapterKey, 10))) continue;
 
                 const chapter = subjectData[chapterKey];
                 if (chapter?.vod?.checked) {
@@ -62,14 +58,11 @@ function calculateKpiData(progress) {
     }
 
     if (maxProgress <= 0) {
-        bestSubject = '未開始'; // "Еще не начато"
+        bestSubject = '未開始';
     }
 
     return { totalTasks, overallCompletion, bestSubject, subjectProgress };
 }
-
-
-// --- Функции отрисовки ---
 
 function renderKpiCards({ totalTasks, overallCompletion, bestSubject }) {
     const totalTasksEl = document.getElementById('total-tasks-stat');
@@ -177,7 +170,6 @@ function renderSubjectsChart({ subjectProgress }) {
     });
 }
 
-// --- Обработка данных и вызов отрисовки ---
 function processDataForCharts(progress) {
     if (!progress) {
         renderKpiCards({ totalTasks: 0, overallCompletion: 0, bestSubject: '未開始' });
@@ -190,7 +182,6 @@ function processDataForCharts(progress) {
     renderSubjectsChart(kpiData);
 }
 
-// --- Экспорт данных ---
 function exportData(progress) {
     try {
         const dataStr = JSON.stringify(progress, null, 2);
@@ -209,7 +200,6 @@ function exportData(progress) {
     }
 }
 
-// --- Инициализация ---
 async function initialize() {
     try {
         await api.getCurrentUser();
@@ -235,8 +225,11 @@ async function initialize() {
             window.location.href = '/error?code=PROGRESS_LOAD_FAILED';
         }
     } finally {
-        // --- 変更: すべての処理が完了した後にページを表示 ---
-        document.body.style.visibility = 'visible';
+        // --- 変更: コンテナをフェードインさせる ---
+        const container = document.getElementById('page-container');
+        if (container) {
+            container.style.opacity = '1';
+        }
     }
 }
 

@@ -16,15 +16,14 @@
             } catch (_) {}
         })();
     </script>
-    <style>body { visibility: hidden; }</style>
     <link rel="icon" href="/image/favicon.png" type="image/png">
     <link rel="stylesheet" href="/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
 
-<div id="main-container" class="hidden container mx-auto p-4 md:p-8 max-w-7xl flex-col min-h-screen">
-    <div class="flex-grow">
+<div id="page-container" class="container mx-auto p-4 md:p-8 max-w-7xl flex-col min-h-screen" style="opacity: 0; transition: opacity 0.3s ease-in-out;">
+    <div id="main-container" class="flex-grow">
         <header class="mb-6 flex justify-between items-center">
             <div>
                 <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">2025年度秋学期 学習計画</h1>
