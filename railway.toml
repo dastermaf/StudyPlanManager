@@ -7,10 +7,10 @@ healthcheckPath = "/"
 healthcheckTimeout = 100
 
 [http.headers]
-# Эта политика разрешает все, что нужно вашему приложению, и ничего лишнего.
-"Content-Security-Policy" = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self' https://fonts.gstatic.com;"
-# Эти заголовки - стандартная хорошая практика для безопасности.
+# --- 変更: インラインスクリプトの実行を許可するために2つのハッシュ値を追加 ---
+"Content-Security-Policy" = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM=' 'sha256-UyMWDlOGeCJ35SOPqVr+NfGfCYjIzihHd/kKZTbj+DY='; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; font-src 'self' https://fonts.gstatic.com;"
+# これらのヘッダーは、セキュリティのための標準的なベストプラクティスです。
 "X-Frame-Options" = "DENY"
 "X-Content-Type-Options" = "nosniff"
-# Этот заголовок важен, чтобы исправить ошибку с favicon.ico
+# このヘッダーは、favicon.icoのエラーを修正するために重要です
 "Cross-Origin-Resource-Policy" = "same-site"
