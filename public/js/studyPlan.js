@@ -10,7 +10,6 @@ export const SUBJECTS = [
     { id: "CBD2501001", name: '文化を読みとくB', totalLectures: 15 },
     { id: "CBD2502001", name: '基盤英語2', totalLectures: 15 },
     { id: "CAI2505101", name: 'メディアリテラシ', totalLectures: 8 },
-    { id: "CAI2505101", name: 'メディアリテラシ', totalLectures: 8 },
 ];
 
 export const WEEKLY_NOTES = {
