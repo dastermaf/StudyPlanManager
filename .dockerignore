@@ -1,5 +1,7 @@
-node_modules
 .git
-.gitignore
-Dockerfile
+.github
+node_modules
+*.log
 .env
+.DS_Store
+dist/*.map

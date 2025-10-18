@@ -1,9 +1,3 @@
-Node.js
+.idea/
+OLD/
 node_modules/
-npm-debug.log
-yarn-error.log
-
-Environment variables
-.env
-/.idea/workspace.xml
-/.idea/

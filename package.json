@@ -1,26 +1,21 @@
 {
-  "name": "study-planner",
+  "name": "studyplanmanager",
   "version": "1.0.0",
-  "description": "A web application to manage a student's study plan.",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "build:css": "tailwindcss -i ./public/input.css -o ./public/style.css",
-    "audit": "npm audit --audit-level=high"
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dastermaf/StudyPlanManager.git"
   },
+  "scripts": {
+    "start": "node dist/index.js"
+  },
+  "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "bcrypt": "^5.1.1",
-    "cookie-parser": "^1.4.6",
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.2.0",
-    "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3"
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/dastermaf/StudyPlanManager/issues"
   },
-  "devDependencies": {
-    "tailwindcss": "^3.4.1"
-  }
+  "homepage": "https://github.com/dastermaf/StudyPlanManager#readme"
 }

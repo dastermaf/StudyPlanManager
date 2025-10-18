@@ -1,25 +1,23 @@
-# 1. ベースとなるNode.jsの環境を選択します
-FROM node:18-slim
+FROM node:20-alpine
 
-# 2. アプリケーションの作業ディレクトリを作成します
 WORKDIR /app
 
-# 3. package.jsonとpackage-lock.jsonをコピーします
+RUN npm install -g @go-task/cli
+
 COPY package*.json ./
+COPY Taskfile.yml ./
+COPY tsconfig.json ./
 
-# 4. 依存関係のみを先にインストールします
-# これにより、コードを変更した際にキャッシュが効き、ビルドが速くなります
-RUN npm install
+RUN npm ci
 
-# 5. プロジェクトの全てのファイルを作業ディレクトリにコピーします
-COPY . .
+COPY src/ ./src/
 
-# 6. CSSファイルをビルドします
-# この時点で input.css と tailwind.config.js が存在します
-RUN npm run build:css
+RUN task build
 
-# 7. ИСПРАВЛЕНИЕ: Удалена жестко заданная инструкция EXPOSE.
-# Railway будет использовать переменную окружения PORT автоматически.
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S appuser -u 1001 && \
+    chown -R appuser:nodejs /app
 
-# 8. サーバーを起動するコマンドを実行します
-CMD [ "npm", "start" ]
+USER appuser
+
+CMD ["npm", "start"]
