@@ -8,6 +8,13 @@ COPY package*.json ./
 COPY Taskfile.yaml ./
 COPY tsconfig.json ./
 
+RUN echo "=== Проверка наличия Taskfile ===" && \
+    ls -la Taskfile.yaml && \
+    echo "=== Содержимое Taskfile ===" && \
+    cat Taskfile.yaml && \
+    echo "=== Проверка работоспособности task ===" && \
+    task --list-all
+
 RUN npm ci
 
 COPY src/ ./src/

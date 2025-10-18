@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/dastermaf/StudyPlanManager/issues"
   },
-  "homepage": "https://github.com/dastermaf/StudyPlanManager#readme"
+  "homepage": "https://github.com/dastermaf/StudyPlanManager#readme",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
 }
