@@ -1,9 +1,9 @@
 version: '3'
 
 vars:
-  tsc: ./node_modules/.bin/tsc
+  TSC: "./node_modules/.bin/tsc"
 
 tasks:
   build:
     cmds:
-      - {{.tsc}}
+      - {{.TSC}}
