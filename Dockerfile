@@ -12,11 +12,12 @@ RUN npm ci
 
 COPY src/ ./src/
 
-RUN task build
+RUN task -t /app/Taskfile.yaml build
 
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001 && \
-    chown -R appuser:nodejs /app
+    adduser -S -G nodejs -u 1001 -h /home/appuser -s /sbin/nologin appuser && \
+    mkdir -p /home/appuser && \
+    chown -R appuser:nodejs /app /home/appuser
 
 USER appuser
 
