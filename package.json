@@ -12,13 +12,13 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "ISC", 
   "type": "module",
   "bugs": {
     "url": "https://github.com/dastermaf/StudyPlanManager/issues"
   },
   "homepage": "https://github.com/dastermaf/StudyPlanManager#readme",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3" 
   }
 }
