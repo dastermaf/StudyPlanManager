@@ -12,7 +12,7 @@ RUN npm ci
 
 COPY src/ ./src/
 
-RUN task -t /app/Taskfile.yaml build
+RUN task build
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -G nodejs -u 1001 -h /home/appuser -s /sbin/nologin appuser && \
