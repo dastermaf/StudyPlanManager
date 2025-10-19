@@ -7,6 +7,8 @@ import 'dotenv/config';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.useStaticAssets(join(process.cwd(), 'public')); // Указываем папку 'public' для статики
+
   app.setViewEngine('hbs');
   app.setBaseViewsDir(join(process.cwd(), 'public/layout'));
 
