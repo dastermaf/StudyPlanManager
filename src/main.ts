@@ -1,16 +1,21 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import { AppModule } from './app.module.js';
 import 'dotenv/config';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-    if(!process.env.PORT) {
-        throw new Error("Port not specified!");
-    }
+  app.setViewEngine('hbs');
+  app.setBaseViewsDir(join(process.cwd(), 'public/layout'));
 
-    await app.listen(process.env.PORT);
-    console.log(`Running on: http://localhost:${process.env.PORT || 3000}`);
+  if(!process.env.PORT) {
+    throw new Error("Port not specified!");
+  }
+
+  await app.listen(process.env.PORT);
+  console.log(`Running on: http://localhost:${process.env.PORT || 3000}`);
 }
 
 bootstrap();

@@ -1,18 +1,19 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ESNext",
     "target": "ES2022",
+    "moduleResolution": "node",
     "types": ["node"],
     "sourceMap": true,
     "outDir": "dist",
     "strict": true,
     "skipLibCheck": true,
-    
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleDetection": "force"
   },
-
   "include": [
     "src/**/*.ts"
   ]

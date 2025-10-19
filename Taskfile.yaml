@@ -11,4 +11,4 @@ tasks:
   test:
     deps: [build]
     cmds:
-      - node -r dotenv/config dist/index.js dotenv_config_path=local.env
+      - node -r dotenv/config dist/main.js dotenv_config_path=local.env

@@ -1,9 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Render } from '@nestjs/common';
 
 @Controller()
 export class AppController {
-    @Get()
-    getHello(): string {
-        return 'Hello World from StudyPlanManager!';
-    }
+
+  @Get()
+  @Render('index') // public/layout/index.hbs
+  root() {
+
+    return { 
+      pageTitle: 'StudyPlanManager', 
+      message: 'Hello World!' 
+    };
+  }
 }
