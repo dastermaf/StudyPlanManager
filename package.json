@@ -12,13 +12,24 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC", 
+  "license": "ISC",
   "type": "module",
   "bugs": {
     "url": "https://github.com/dastermaf/StudyPlanManager/issues"
   },
   "homepage": "https://github.com/dastermaf/StudyPlanManager#readme",
   "devDependencies": {
-    "typescript": "^5.9.3" 
+    "@nestjs/cli": "^11.0.10",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.8.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "dotenv": "^17.2.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   }
 }
