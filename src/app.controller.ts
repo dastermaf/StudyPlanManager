@@ -4,11 +4,13 @@ import { Response } from 'express';
 @Controller()
 export class AppController {
 
+    // REDIRECT:
     @Get()
   @Redirect('/login', 302) // Перенаправляем на /login со статусом 302 (временный редирект)
   redirectToLogin() {
   }
 
+  // LOGIN PAGE:
   @Get('login')
   @Render('login') // public/layout/login.hbs
   showLoginPage() {
@@ -17,18 +19,19 @@ export class AppController {
     };
   }
 
-  @Get('app') // main page
+  // MAIN PAGE:
+  @Get('app') 
   @Render('index') // public/layout/index.hbs 
   showAppPage() {
     // В будущем здесь можно передавать данные пользователя
     return {
       pageTitle: 'Plan Manager',
-      username: 'ユーザー', // Пример
+      username: 'ユーザー', // будет связано с бд в будущем
       projectTitle: 'Stady Plan Manager'
     };
   }
 
-  // --- Страница материалов ('/materials/:subjectId/:chapterNo') ---
+  // MATERIALS PAGE: ('/materials/:subjectId/:chapterNo') 
   @Get('materials/:subjectId/:chapterNo')
   @Render('materials') // public/layout/materials.hbs
   showMaterialsPage(@Param('subjectId') subjectId: string, @Param('chapterNo') chapterNo: string) {
@@ -41,7 +44,7 @@ export class AppController {
     };
   }
 
-  // --- Страница дашборда ('/dashboard') ---
+  // DASHBOARD PAGE ('/dashboard') 
   @Get('dashboard')
   @Render('dashboard') // public/layout/dashboard.hbs
   showDashboardPage() {
@@ -50,7 +53,7 @@ export class AppController {
     };
   }
 
-  // --- Страница "О сайте" ('/about') ---
+  // ABOUT PAGE ('/about') 
   @Get('about')
   @Render('about') // public/layout/about.hbs
   showAboutPage() {
@@ -59,7 +62,7 @@ export class AppController {
     };
   }
 
-  // --- Страница ошибок ('/error') ---
+  // ERROR PAGE('/error') 
   @Get('error')
   @Render('error') // public/layout/error.hbs
   showErrorPage(@Query('code') code?: string, @Query('msg') msg?: string) {
@@ -71,7 +74,7 @@ export class AppController {
     };
   }
 
-  // --- Маршрут для редиректа с favicon.ico ---
+  //  FAVICON ROOTING
   @Get('favicon.ico')
   redirectToFavicon(@Res() res: Response) {
     // Делаем редирект на реальный файл иконки
