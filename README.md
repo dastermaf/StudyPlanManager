@@ -14,8 +14,6 @@ The main goal is to make managing your semester a bit easier. It helps specifica
 
 ## Getting Started
 
-[Здесь должны быть инструкции по установке и запуску старой версии. Поскольку у меня нет информации о ней, я оставляю это как шаблон. Тебе нужно будет заполнить это реальными командами для старого кода.]
-
 1.  Clone the repository:
     ```bash
     git clone [https://github.com/dastermaf/StudyPlanManager.git](https://github.com/dastermaf/StudyPlanManager.git)
